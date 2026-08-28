@@ -6,9 +6,14 @@ using MiniPIM.Services;
 
 namespace MiniPIM.Controllers;
 
-public class HomeController(IProductService svc) : Controller
+public class HomeController : Controller
 {
-    public async Task<IActionResult> Index() { ViewBag.Dash = await svc.DashboardAsync(); return View(); }
+    public IActionResult Index() => Redirect("/index.html");   // SPA React ở "/"
+}
+
+public class LegacyController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index() { ViewBag.Dash = await svc.DashboardAsync(); return View("~/Views/Home/Index.cshtml"); }
 }
 
 public class ProductController(IProductService svc) : Controller

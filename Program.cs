@@ -104,7 +104,58 @@ app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>
     return Results.Ok(new { orgId = org.Id, apiKey = org.ApiKey });
 });
 
+// Import nhóm sản phẩm thật (dedupe theo Code)
+app.MapPost("/api/import/groups", async (List<ImportGroupDto> rows, AppDbContext db, ITenantContext tc) =>
+{
+    if (rows == null || rows.Count == 0) return Results.BadRequest(new { error = "Không có dữ liệu." });
+    int added = 0, skipped = 0;
+    var orgId = tc.OrgId;
+    var existCodes = db.Groups.Where(g => g.OrgId == orgId).Select(g => g.Code).ToHashSet();
+    foreach (var row in rows)
+    {
+        if (string.IsNullOrWhiteSpace(row.Code)) { skipped++; continue; }
+        if (existCodes.Contains(row.Code.Trim())) { skipped++; continue; }
+        db.Groups.Add(new ProductGroup { OrgId = orgId, Code = row.Code.Trim(), Name = row.Name?.Trim() ?? row.Code.Trim() });
+        existCodes.Add(row.Code.Trim()); added++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { added, skipped, total = added + skipped });
+});
+
+// Import sản phẩm thật từ DB nguồn (dedupe theo Code)
+app.MapPost("/api/import/products", async (List<ImportProdDto> rows, AppDbContext db, ITenantContext tc) =>
+{
+    if (rows == null || rows.Count == 0) return Results.BadRequest(new { error = "Không có dữ liệu." });
+    int added = 0, skipped = 0;
+    var orgId = tc.OrgId;
+    var existCodes = db.Products.Where(p => p.OrgId == orgId).Select(p => p.Code).ToHashSet();
+    foreach (var row in rows)
+    {
+        if (string.IsNullOrWhiteSpace(row.Code)) { skipped++; continue; }
+        var code = row.Code.Trim();
+        if (existCodes.Contains(code)) { skipped++; continue; }
+        int? groupId = null;
+        if (!string.IsNullOrWhiteSpace(row.GroupCode))
+        {
+            var grp = db.Groups.FirstOrDefault(g => g.OrgId == orgId && g.Code == row.GroupCode.Trim());
+            groupId = grp?.Id;
+        }
+        db.Products.Add(new Product
+        {
+            OrgId = orgId, Code = code, Name = row.Name?.Trim() ?? code,
+            GroupId = groupId, Uom = row.Uom?.Trim() ?? "cái",
+            CostPrice = row.CostPrice, SalePrice = row.SalePrice,
+            Status = ProductStatus.Active, UpdatedAt = DateTime.Now
+        });
+        existCodes.Add(code); added++;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { added, skipped, total = added + skipped });
+});
+
 app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
 app.Run();
 
 record RegisterOrgDto(string Name);
+record ImportGroupDto(string? Code, string? Name);
+record ImportProdDto(string? Code, string? Name, string? GroupCode, string? Uom, decimal CostPrice, decimal SalePrice);

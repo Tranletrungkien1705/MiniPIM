@@ -292,6 +292,26 @@ public class SpecUnit : IOrgOwned
 }
 
 /// <summary>
+/// Loại quy cách (Mst_SpecType1 / Mst_SpecType2 của ProductCenter) — danh mục dùng
+/// chung cho product master: quy cách (Spec.SpecType1/SpecType2) tham chiếu theo mã.
+/// Hai bảng nguồn có cấu trúc giống hệt nhau nên gộp thành 1 entity với Kind = 1|2
+/// (1 = SpecType1, 2 = SpecType2). Code là mã loại (duy nhất trong tổ chức theo Kind),
+/// Name là tên hiển thị, NetworkId là mã dùng chung của network (đồng bộ giữa tổ chức).
+/// </summary>
+public class SpecType : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public int Kind { get; set; } = 1;             // 1 = SpecType1, 2 = SpecType2
+    public string Code { get; set; } = "";        // SpecType1 / SpecType2 — mã loại quy cách
+    public string Name { get; set; } = "";        // SpecType1Name / SpecType2Name — tên loại
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? Remark { get; set; }             // Remark — ghi chú
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Trường tùy chỉnh của quy cách (Mst_SpecCustomField của ProductCenter) — danh mục
 /// định nghĩa các trường động gắn cho quy cách (Mst_Spec). SpecCustomFieldCode là mã
 /// hệ thống (duy nhất trong tổ chức), SpecCustomFieldName là tên hiển thị,

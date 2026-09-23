@@ -78,6 +78,12 @@ public interface IProductService
     Task<SpecCustomField?> GetSpecCustomFieldAsync(int id);
     Task<string?> SaveSpecCustomFieldAsync(SpecCustomField f);
     Task<string?> DeleteSpecCustomFieldAsync(int id);
+
+    // --- Loại quy cách (Mst_SpecType1 / Mst_SpecType2) ---
+    Task<List<SpecType>> SpecTypesAsync(int? kind, string? q);
+    Task<SpecType?> GetSpecTypeAsync(int id);
+    Task<string?> SaveSpecTypeAsync(SpecType t);
+    Task<string?> DeleteSpecTypeAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -819,6 +825,69 @@ public class ProductService(AppDbContext db) : IProductService
         var f = await db.SpecCustomFields.FirstOrDefaultAsync(x => x.Id == id);
         if (f == null) return "Không tìm thấy thông tin Trường tùy chỉnh.";
         db.SpecCustomFields.Remove(f);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Loại quy cách (Mst_SpecType1 / Mst_SpecType2) ---
+    public async Task<List<SpecType>> SpecTypesAsync(int? kind, string? q)
+    {
+        var query = db.SpecTypes.AsQueryable();
+        if (kind.HasValue) query = query.Where(t => t.Kind == kind.Value);
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(t => t.Code.Contains(q) || t.Name.Contains(q));
+        return await query.OrderBy(t => t.Kind).ThenBy(t => t.Code).ToListAsync();
+    }
+
+    public Task<SpecType?> GetSpecTypeAsync(int id) => db.SpecTypes.FirstOrDefaultAsync(t => t.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecType1_Create / Mst_SpecType1_Update / Mst_SpecType1_CheckDB,
+    /// áp dụng chung cho SpecType2): mã loại quy cách bắt buộc (Mst_SpecType1_Create_InvalidSpecType1),
+    /// mã không trùng trong tổ chức theo từng Kind (Mst_SpecType1_CheckDB_SpecType1Exist),
+    /// tên loại bắt buộc (Mst_SpecType1_Create_InvalidSpecType1Name / _Update_InvalidSpecType1Name),
+    /// khi sửa phải tồn tại. Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSpecTypeAsync(SpecType t)
+    {
+        if (t.Kind != 1 && t.Kind != 2) return "Loại quy cách không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(t.Code)) return "Mã Loại quy cách không hợp lệ.";
+        t.Code = t.Code.Trim();
+        t.Name = (t.Name ?? "").Trim();
+
+        // Mst_SpecType1_CheckDB: mã không trùng trong tổ chức (theo từng Kind).
+        var dupCode = await db.SpecTypes.AnyAsync(x => x.Kind == t.Kind && x.Code == t.Code && x.Id != t.Id);
+        if (dupCode) return $"Mã Loại quy cách '{t.Code}' đã tồn tại.";
+
+        // Mst_SpecType1_Create_InvalidSpecType1Name / _Update_InvalidSpecType1Name.
+        if (string.IsNullOrWhiteSpace(t.Name)) return "Tên Loại quy cách không hợp lệ.";
+
+        SpecType target;
+        if (t.Id > 0)
+        {
+            target = await db.SpecTypes.FirstOrDefaultAsync(x => x.Id == t.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Loại quy cách.");
+            target.Name = t.Name; target.NetworkId = t.NetworkId;
+            target.Remark = t.Remark; target.Active = t.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = t;
+            db.SpecTypes.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecType1_Delete / Mst_SpecType1_CheckDB):
+    /// loại quy cách phải tồn tại mới cho xóa (Mst_SpecType1_CheckDB_SpecType1NotFound).
+    /// </summary>
+    public async Task<string?> DeleteSpecTypeAsync(int id)
+    {
+        var t = await db.SpecTypes.FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return "Không tìm thấy thông tin Loại quy cách.";
+        db.SpecTypes.Remove(t);
         await db.SaveChangesAsync();
         return null;
     }

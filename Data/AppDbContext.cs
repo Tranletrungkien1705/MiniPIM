@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<CurrencyEx> CurrencyExes => Set<CurrencyEx>();
     public DbSet<SpecUnit> SpecUnits => Set<SpecUnit>();
     public DbSet<SpecCustomField> SpecCustomFields => Set<SpecCustomField>();
+    public DbSet<SpecType> SpecTypes => Set<SpecType>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -125,6 +126,11 @@ public class AppDbContext : DbContext
         b.Entity<SpecCustomField>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SpecType>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Kind, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

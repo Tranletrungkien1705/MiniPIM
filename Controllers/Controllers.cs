@@ -457,6 +457,40 @@ public class SpecCustomFieldController(IProductService svc) : Controller
     }
 }
 
+public class SpecTypeController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(int? kind, string? q)
+    {
+        ViewBag.Kind = kind; ViewBag.Q = q;
+        return View(await svc.SpecTypesAsync(kind, q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var t = id.HasValue ? await svc.GetSpecTypeAsync(id.Value) : new SpecType();
+        if (t == null) return NotFound();
+        return View(t);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, int kind, string code, string name, string? networkId, string? remark, bool active)
+    {
+        var t = new SpecType { Id = id, Kind = kind, Code = code ?? "", Name = name ?? "", NetworkId = networkId, Remark = remark, Active = active };
+        var err = await svc.SaveSpecTypeAsync(t);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu loại quy cách.";
+        return RedirectToAction(nameof(Index), new { kind });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, int? kind)
+    {
+        var err = await svc.DeleteSpecTypeAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa loại quy cách.";
+        return RedirectToAction(nameof(Index), new { kind });
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

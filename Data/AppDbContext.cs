@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<SpecUnit> SpecUnits => Set<SpecUnit>();
     public DbSet<SpecCustomField> SpecCustomFields => Set<SpecCustomField>();
     public DbSet<SpecType> SpecTypes => Set<SpecType>();
+    public DbSet<SsccType> SsccTypes => Set<SsccType>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -132,6 +133,11 @@ public class AppDbContext : DbContext
         b.Entity<SpecType>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Kind, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SsccType>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

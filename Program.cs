@@ -55,7 +55,7 @@ app.MapGet("/api/products/{code}", async (string code, IProductService svc) =>
     return p is null ? Results.NotFound() : Results.Ok(new
     {
         p.Code, p.Name, group = p.Group?.Name, p.Uom, p.Barcode, p.CostPrice, p.SalePrice, p.Description,
-        level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach, p.ProductTypeCode,
+        level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach, p.ProductTypeCode, p.SsccTypeCode, p.Gtin,
         attributes = p.Attributes.Select(a => new { a.Name, a.Value }),
         bom = p.Bom.Select(x => new { x.ComponentCode, x.ComponentName, x.Quantity, x.Uom })
     });
@@ -86,6 +86,13 @@ app.MapGet("/api/product-types", async (string? q, IProductService svc) =>
 {
     var list = await svc.ProductTypesAsync(q);
     return Results.Ok(list.Where(t => t.Active).Select(t => new { t.Code, t.Name, t.Remark }));
+});
+
+// Loại SSCC (Mst_SSCCType) — danh mục dùng chung cho product master.
+app.MapGet("/api/sscc-types", async (string? q, IProductService svc) =>
+{
+    var list = await svc.SsccTypesAsync(q);
+    return Results.Ok(list.Where(s => s.Active).Select(s => new { s.Code, s.Name, s.NetworkId }));
 });
 
 app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>

@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = Model.Id > 0 ? $"Sản phẩm {Model.Code}" : "Thêm sản phẩm";
     var groups = (List<ProductGroup>)ViewBag.Groups;
+    var ssccTypes = (List<SsccType>)ViewBag.SsccTypes;
 }
 <form asp-action="Save" method="post">
     @Html.AntiForgeryToken()
@@ -42,6 +43,11 @@
                 <div class="col-md-3"><label class="form-label small text-muted">Mã thuế GTGT</label><input name="vatRateCode" value="@Model.VatRateCode" class="form-control" placeholder="VAT10" /></div>
                 <div class="col-md-3"><label class="form-label small text-muted">Xuất xứ</label><input name="origin" value="@Model.Origin" class="form-control" /></div>
                 <div class="col-md-3"><label class="form-label small text-muted">Quy cách</label><input name="quyCach" value="@Model.QuyCach" class="form-control" placeholder="1 cái/túi" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Loại SSCC</label>
+                    <select name="ssccTypeCode" class="form-select"><option value="">—</option>
+                        @foreach (var s in ssccTypes) { <option value="@s.Code" selected="@(Model.SsccTypeCode==s.Code)">@s.Name</option> }
+                    </select></div>
+                <div class="col-md-3"><label class="form-label small text-muted">GTIN</label><input name="gtin" value="@Model.Gtin" class="form-control" placeholder="mã số" /></div>
                 <div class="col-md-3 d-flex align-items-end gap-3">
                     <div class="form-check"><input class="form-check-input" type="checkbox" name="flagSerial" value="true" id="flagSerial" checked="@Model.FlagSerial" /><label class="form-check-label small" for="flagSerial">Serial</label></div>
                     <div class="form-check"><input class="form-check-input" type="checkbox" name="flagLot" value="true" id="flagLot" checked="@Model.FlagLot" /><label class="form-check-label small" for="flagLot">Lô</label></div>

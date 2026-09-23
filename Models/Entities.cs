@@ -192,6 +192,8 @@ public class Product : IOrgOwned
     public string? Origin { get; set; }                             // xuất xứ (ProductOrigin)
     public string? QuyCach { get; set; }                            // quy cách đóng gói (ProductQuyCach)
     public string? ProductTypeCode { get; set; }                    // ProductType — loại hàng hóa (Mst_ProductType)
+    public string? SsccTypeCode { get; set; }                       // SSCCType — loại SSCC (Mst_SSCCType)
+    public string? Gtin { get; set; }                               // GTIN — mã thương phẩm toàn cầu (phải là số)
 
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
@@ -314,6 +316,24 @@ public class SpecType : IOrgOwned
     public string Name { get; set; } = "";        // SpecType1Name / SpecType2Name — tên loại
     public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
     public string? Remark { get; set; }             // Remark — ghi chú
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// Loại SSCC (Mst_SSCCType của ProductCenter) — danh mục dùng chung cho product master:
+/// hàng hóa tham chiếu theo SSCCType (mã loại SSCC) để khai báo đơn vị đóng gói logistics
+/// (thùng/pallet theo chuẩn SSCC — Serial Shipping Container Code). SSCCType là mã hệ thống
+/// (duy nhất trong tổ chức), SSCCTypeName là tên hiển thị, NetworkID là mã dùng chung của
+/// network (đồng bộ giữa các tổ chức).
+/// </summary>
+public class SsccType : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // SSCCType — mã loại SSCC
+    public string Name { get; set; } = "";        // SSCCTypeName — tên loại SSCC
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
     public bool Active { get; set; } = true;        // FlagActive
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }

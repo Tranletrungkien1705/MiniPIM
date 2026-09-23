@@ -1,0 +1,23 @@
+@model SsccType
+@{ ViewData["Title"] = Model.Id > 0 ? "Sửa loại SSCC" : "Thêm loại SSCC"; }
+<div class="row g-3">
+    <div class="col-lg-6"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">@ViewData["Title"]</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="mb-2">
+                <label class="form-label small text-muted">Mã loại SSCC *</label>
+                <input name="code" value="@Model.Code" class="form-control" required @(Model.Id > 0 ? "readonly" : "") />
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên loại SSCC *</label><input name="name" value="@Model.Name" class="form-control" required /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Network ID</label><input name="networkId" value="@Model.NetworkId" class="form-control" /></div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="active" value="true" id="active" @(Model.Active ? "checked" : "") />
+                <label class="form-check-label" for="active">Đang dùng</label>
+            </div>
+            <button class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu</button>
+            <a class="btn btn-outline-secondary" href="/SsccType">Hủy</a>
+        </form>
+    </div></div></div>
+</div>

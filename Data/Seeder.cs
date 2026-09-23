@@ -136,13 +136,21 @@ public static class Seeder
                 new SpecType { Kind = 2, Code = "KIEUDANG", Name = "Kiểu dáng", NetworkId = "KIEUDANG" });
             await db.SaveChangesAsync();
         }
+        if (!await db.SsccTypes.AnyAsync())
+        {
+            db.SsccTypes.AddRange(
+                new SsccType { Code = "SSCC-THUNG", Name = "Thùng carton", NetworkId = "SSCC-THUNG" },
+                new SsccType { Code = "SSCC-PALLET", Name = "Pallet", NetworkId = "SSCC-PALLET" },
+                new SsccType { Code = "SSCC-BAO", Name = "Bao / túi", NetworkId = "SSCC-BAO" });
+            await db.SaveChangesAsync();
+        }
     }
 
     private static async Task MigratePostgresAsync(AppDbContext db)
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes", "SpecUnits", "SpecCustomFields", "SpecTypes" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes", "SpecUnits", "SpecCustomFields", "SpecTypes", "SsccTypes" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",
@@ -159,6 +167,9 @@ public static class Seeder
         sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");
         // Loại hàng hóa (Mst_ProductType): cột tham chiếu trên Hàng hóa.
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductTypeCode\" text NULL");
+        // Loại SSCC (Mst_SSCCType): cột tham chiếu + GTIN trên Hàng hóa.
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"SsccTypeCode\" text NULL");
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"Gtin\" text NULL");
         // Thuộc tính (Mst_Attribute): mã dùng chung network.
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"NetworkId\" text NULL");
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");

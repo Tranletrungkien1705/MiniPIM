@@ -87,6 +87,12 @@ public interface IProductService
     Task<string?> SaveSpecTypeAsync(SpecType t);
     Task<string?> DeleteSpecTypeAsync(int id);
 
+    // --- Loại SSCC (Mst_SSCCType) ---
+    Task<List<SsccType>> SsccTypesAsync(string? q);
+    Task<SsccType?> GetSsccTypeAsync(int id);
+    Task<string?> SaveSsccTypeAsync(SsccType s);
+    Task<string?> DeleteSsccTypeAsync(int id);
+
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
     Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
     Task<List<MasterIssue>> AuditMasterAsync();
@@ -125,6 +131,7 @@ public class ProductService(AppDbContext db) : IProductService
             target.Level = p.Level; target.ValConvert = p.ValConvert; target.QtyMinSt = p.QtyMinSt; target.QtyMaxSt = p.QtyMaxSt;
             target.VatRateCode = p.VatRateCode; target.FlagSerial = p.FlagSerial; target.FlagLot = p.FlagLot;
             target.Origin = p.Origin; target.QuyCach = p.QuyCach;
+            target.ProductTypeCode = p.ProductTypeCode; target.SsccTypeCode = p.SsccTypeCode; target.Gtin = p.Gtin;
             db.Attributes.RemoveRange(target.Attributes);
             db.BomLines.RemoveRange(target.Bom);
         }
@@ -955,6 +962,65 @@ public class ProductService(AppDbContext db) : IProductService
         return null;
     }
 
+    // --- Loại SSCC (Mst_SSCCType) ---
+    public async Task<List<SsccType>> SsccTypesAsync(string? q)
+    {
+        var query = db.SsccTypes.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(s => s.Code.Contains(q) || s.Name.Contains(q));
+        return await query.OrderBy(s => s.Code).ToListAsync();
+    }
+
+    public Task<SsccType?> GetSsccTypeAsync(int id) => db.SsccTypes.FirstOrDefaultAsync(s => s.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SSCCType_CheckDB): mã loại SSCC bắt buộc &amp; không trùng
+    /// trong tổ chức (Mst_SSCCType_CheckDB_SSCCTypeExist), tên loại SSCC bắt buộc, khi sửa
+    /// phải tồn tại (Mst_SSCCType_CheckDB_SSCCTypeNotFound). Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSsccTypeAsync(SsccType s)
+    {
+        if (string.IsNullOrWhiteSpace(s.Code)) return "Mã Loại SSCC không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(s.Name)) return "Tên Loại SSCC không hợp lệ.";
+        s.Code = s.Code.Trim(); s.Name = s.Name.Trim();
+        s.NetworkId = string.IsNullOrWhiteSpace(s.NetworkId) ? null : s.NetworkId.Trim();
+
+        // Mst_SSCCType_CheckDB: mã không trùng trong tổ chức.
+        var dupCode = await db.SsccTypes.AnyAsync(x => x.Code == s.Code && x.Id != s.Id);
+        if (dupCode) return $"Mã Loại SSCC '{s.Code}' đã tồn tại.";
+
+        SsccType target;
+        if (s.Id > 0)
+        {
+            target = await db.SsccTypes.FirstOrDefaultAsync(x => x.Id == s.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Loại SSCC.");
+            target.Name = s.Name; target.NetworkId = s.NetworkId;
+            target.Active = s.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = s;
+            db.SsccTypes.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SSCCType_CheckDB): loại SSCC phải tồn tại mới cho xóa
+    /// (Mst_SSCCType_CheckDB_SSCCTypeNotFound), và không cho xóa nếu đang được hàng hóa sử dụng.
+    /// </summary>
+    public async Task<string?> DeleteSsccTypeAsync(int id)
+    {
+        var s = await db.SsccTypes.FirstOrDefaultAsync(x => x.Id == id);
+        if (s == null) return "Không tìm thấy thông tin Loại SSCC.";
+        if (await db.Products.AnyAsync(p => p.SsccTypeCode == s.Code))
+            return $"Loại SSCC '{s.Name}' đã sử dụng trong Hàng hóa, không thể xóa.";
+        db.SsccTypes.Remove(s);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
 
     /// <summary>
@@ -993,6 +1059,18 @@ public class ProductService(AppDbContext db) : IProductService
             if (!unit.Active) return $"Trạng thái Đơn vị '{p.Uom}' không hợp lệ.";
         }
 
+        // Mst_SSCCType_CheckDB: loại SSCC nếu có phải tồn tại & đang dùng.
+        if (!string.IsNullOrWhiteSpace(p.SsccTypeCode))
+        {
+            var sscc = await db.SsccTypes.FirstOrDefaultAsync(s => s.Code == p.SsccTypeCode);
+            if (sscc == null) return $"Không tìm thấy Loại SSCC '{p.SsccTypeCode}'.";
+            if (!sscc.Active) return $"Trạng thái Loại SSCC '{p.SsccTypeCode}' không hợp lệ.";
+        }
+
+        // Mst_Product_Create_IsNotNumberGTIN: GTIN nếu có phải là số.
+        if (!string.IsNullOrWhiteSpace(p.Gtin) && !p.Gtin.Trim().All(char.IsDigit))
+            return $"Mã GTIN '{p.Gtin}' không hợp lệ (phải là số).";
+
         // Mst_Product_Create_InvalidCOMBO: hàng hóa COMBO phải có thành phần BOM.
         var isCombo = string.Equals(p.ProductTypeCode, "COMBO", StringComparison.OrdinalIgnoreCase);
         var hasBom = bom.Any(x => !string.IsNullOrWhiteSpace(x.ComponentName) || !string.IsNullOrWhiteSpace(x.ComponentCode));
@@ -1014,6 +1092,7 @@ public class ProductService(AppDbContext db) : IProductService
 
         var productTypes = await db.ProductTypes.ToDictionaryAsync(t => t.Code, t => t.Active);
         var vatRates = await db.VatRates.ToDictionaryAsync(v => v.Code, v => v.Active);
+        var ssccTypes = await db.SsccTypes.ToDictionaryAsync(s => s.Code, s => s.Active);
         var units = await db.Units.ToListAsync();
         bool UnitExists(string code) => units.Any(u => u.CodeUser == code || u.Code == code);
         bool UnitActive(string code) => units.Any(u => (u.CodeUser == code || u.Code == code) && u.Active);
@@ -1046,6 +1125,19 @@ public class ProductService(AppDbContext db) : IProductService
                 else if (!UnitActive(p.Uom))
                     issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Unit_CheckDB", $"Trạng thái Đơn vị '{p.Uom}' không hợp lệ."));
             }
+
+            // Mst_SSCCType_CheckDB.
+            if (!string.IsNullOrWhiteSpace(p.SsccTypeCode))
+            {
+                if (!ssccTypes.TryGetValue(p.SsccTypeCode, out var ssccActive))
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_SSCCType_CheckDB", $"Không tìm thấy Loại SSCC '{p.SsccTypeCode}'."));
+                else if (!ssccActive)
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_SSCCType_CheckDB", $"Trạng thái Loại SSCC '{p.SsccTypeCode}' không hợp lệ."));
+            }
+
+            // Mst_Product_Create_IsNotNumberGTIN.
+            if (!string.IsNullOrWhiteSpace(p.Gtin) && !p.Gtin.Trim().All(char.IsDigit))
+                issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Product_Create_IsNotNumberGTIN", $"Mã GTIN '{p.Gtin}' không hợp lệ (phải là số)."));
 
             // Mst_Product_Create_InvalidCOMBO.
             var isCombo = string.Equals(p.ProductTypeCode, "COMBO", StringComparison.OrdinalIgnoreCase);

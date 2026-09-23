@@ -22,6 +22,7 @@ public class ProductController(IProductService svc) : Controller
     public async Task<IActionResult> Edit(int? id)
     {
         ViewBag.Groups = await svc.GroupsAsync();
+        ViewBag.SsccTypes = await svc.SsccTypesAsync(null);
         var p = id.HasValue ? await svc.GetAsync(id.Value) : new Product();
         if (p == null) return NotFound();
         return View(p);
@@ -31,14 +32,15 @@ public class ProductController(IProductService svc) : Controller
     public async Task<IActionResult> Save(int id, string code, string name, int? groupId, string uom, string? barcode,
         decimal costPrice, decimal salePrice, string? description, ProductStatus status,
         ProductLevel level, decimal valConvert, decimal qtyMinSt, decimal qtyMaxSt, string? vatRateCode,
-        bool flagSerial, bool flagLot, string? origin, string? quyCach,
+        bool flagSerial, bool flagLot, string? origin, string? quyCach, string? ssccTypeCode, string? gtin,
         string[]? attrName, string[]? attrValue, string[]? bomCode, string[]? bomName, decimal[]? bomQty, string[]? bomUom)
     {
         if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên sản phẩm."; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         var p = new Product { Id = id, Code = code ?? "", Name = name.Trim(), GroupId = groupId, Uom = string.IsNullOrWhiteSpace(uom) ? "cái" : uom,
             Barcode = barcode, CostPrice = costPrice, SalePrice = salePrice, Description = description, Status = status,
             Level = level, ValConvert = valConvert <= 0 ? 1 : valConvert, QtyMinSt = qtyMinSt, QtyMaxSt = qtyMaxSt,
-            VatRateCode = vatRateCode, FlagSerial = flagSerial, FlagLot = flagLot, Origin = origin, QuyCach = quyCach };
+            VatRateCode = vatRateCode, FlagSerial = flagSerial, FlagLot = flagLot, Origin = origin, QuyCach = quyCach,
+            SsccTypeCode = ssccTypeCode, Gtin = gtin };
         var attrs = new List<ProductAttribute>();
         for (int i = 0; attrName != null && i < attrName.Length; i++)
             attrs.Add(new ProductAttribute { Name = attrName[i], Value = i < (attrValue?.Length ?? 0) ? attrValue![i] : "" });
@@ -509,6 +511,40 @@ public class SpecTypeController(IProductService svc) : Controller
         var err = await svc.DeleteSpecTypeAsync(id);
         if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa loại quy cách.";
         return RedirectToAction(nameof(Index), new { kind });
+    }
+}
+
+public class SsccTypeController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.SsccTypesAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var s = id.HasValue ? await svc.GetSsccTypeAsync(id.Value) : new SsccType();
+        if (s == null) return NotFound();
+        return View(s);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? networkId, bool active)
+    {
+        var s = new SsccType { Id = id, Code = code ?? "", Name = name ?? "", NetworkId = networkId, Active = active };
+        var err = await svc.SaveSsccTypeAsync(s);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu loại SSCC.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteSsccTypeAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa loại SSCC.";
+        return RedirectToAction(nameof(Index));
     }
 }
 

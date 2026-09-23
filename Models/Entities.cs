@@ -402,3 +402,23 @@ public class ProductFile : IOrgOwned
     public bool Active { get; set; } = true;        // FlagActive
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+/// <summary>
+/// Trường động của Hàng hóa (Product_CustomField của ProductCenter) — danh mục định nghĩa
+/// các trường động gắn cho Hàng hóa master (khác với SpecCustomField là trường động của
+/// Quy cách). ProductCustomFieldCode là mã hệ thống (duy nhất trong tổ chức),
+/// ProductCustomFieldName là tên hiển thị (bắt buộc khi cập nhật),
+/// DBPhysicalType là kiểu dữ liệu vật lý lưu trong DB (mặc định nvarchar(400)),
+/// NetworkID là mã dùng chung của network (đồng bộ giữa các tổ chức).
+/// </summary>
+public class ProductCustomField : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // ProductCustomFieldCode — mã trường động
+    public string Name { get; set; } = "";        // ProductCustomFieldName — tên trường động
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? DBPhysicalType { get; set; }     // DBPhysicalType — kiểu dữ liệu vật lý (mặc định nvarchar(400))
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

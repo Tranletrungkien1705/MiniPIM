@@ -109,6 +109,12 @@ public interface IProductService
     Task<string?> SaveProductFileAsync(ProductFile f);
     Task<string?> DeleteProductFileAsync(int id);
 
+    // --- Trường động của Hàng hóa (Product_CustomField) ---
+    Task<List<ProductCustomField>> ProductCustomFieldsAsync(string? q);
+    Task<ProductCustomField?> GetProductCustomFieldAsync(int id);
+    Task<string?> SaveProductCustomFieldAsync(ProductCustomField f);
+    Task<string?> DeleteProductCustomFieldAsync(int id);
+
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
     Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
     Task<List<MasterIssue>> AuditMasterAsync();
@@ -1197,6 +1203,71 @@ public class ProductService(AppDbContext db) : IProductService
         var f = await db.ProductFiles.FirstOrDefaultAsync(x => x.Id == id);
         if (f == null) return "Không tìm thấy File đính kèm của Hàng hóa.";
         db.ProductFiles.Remove(f);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Trường động của Hàng hóa (Product_CustomField) ---
+    public async Task<List<ProductCustomField>> ProductCustomFieldsAsync(string? q)
+    {
+        var query = db.ProductCustomFields.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(f => f.Code.Contains(q) || f.Name.Contains(q) || (f.DBPhysicalType ?? "").Contains(q));
+        return await query.OrderBy(f => f.Code).ToListAsync();
+    }
+
+    public Task<ProductCustomField?> GetProductCustomFieldAsync(int id) =>
+        db.ProductCustomFields.FirstOrDefaultAsync(f => f.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Product_CustomField_Update / Product_CustomField_CheckDB):
+    /// mã trường động bắt buộc &amp; không trùng trong tổ chức
+    /// (Product_CustomField_CheckDB_ProductCustomFieldExist), tên trường động bắt buộc
+    /// (Product_CustomField_Update_InvalidProductCustomFieldName — "Tên trường động của Hàng hóa không hợp lệ."),
+    /// khi sửa phải tồn tại (Product_CustomField_CheckDB_ProductCustomFieldFound).
+    /// Kiểu dữ liệu vật lý mặc định nvarchar(400) (TConst.BizMix.Default_DBColType).
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveProductCustomFieldAsync(ProductCustomField f)
+    {
+        if (string.IsNullOrWhiteSpace(f.Code)) return "Mã Trường động của Hàng hóa không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(f.Name)) return "Tên trường động của Hàng hóa không hợp lệ.";
+        f.Code = f.Code.Trim(); f.Name = f.Name.Trim();
+        f.NetworkId = string.IsNullOrWhiteSpace(f.NetworkId) ? null : f.NetworkId.Trim();
+
+        // Product_CustomField_CheckDB: mã không trùng trong tổ chức.
+        var dupCode = await db.ProductCustomFields.AnyAsync(x => x.Code == f.Code && x.Id != f.Id);
+        if (dupCode) return $"Thông tin động của Hàng hóa '{f.Code}' đã tồn tại trong cơ sở dữ liệu.";
+
+        // Product_CustomField_Update: DBPhysicalType mặc định nvarchar(400).
+        if (string.IsNullOrWhiteSpace(f.DBPhysicalType)) f.DBPhysicalType = "nvarchar(400)";
+
+        ProductCustomField target;
+        if (f.Id > 0)
+        {
+            target = await db.ProductCustomFields.FirstOrDefaultAsync(x => x.Id == f.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy chi tiết Thông tin động của Hàng hóa.");
+            target.Name = f.Name; target.NetworkId = f.NetworkId; target.DBPhysicalType = f.DBPhysicalType;
+            target.Active = f.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = f;
+            db.ProductCustomFields.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Product_CustomField_CheckDB): trường động của Hàng hóa
+    /// phải tồn tại mới cho xóa (Product_CustomField_CheckDB_ProductCustomFieldFound).
+    /// </summary>
+    public async Task<string?> DeleteProductCustomFieldAsync(int id)
+    {
+        var f = await db.ProductCustomFields.FirstOrDefaultAsync(x => x.Id == id);
+        if (f == null) return "Không tìm thấy chi tiết Thông tin động của Hàng hóa.";
+        db.ProductCustomFields.Remove(f);
         await db.SaveChangesAsync();
         return null;
     }

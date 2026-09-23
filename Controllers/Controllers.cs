@@ -642,6 +642,41 @@ public class ProductFileController(IProductService svc) : Controller
     }
 }
 
+public class ProductCustomFieldController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.ProductCustomFieldsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var f = id.HasValue ? await svc.GetProductCustomFieldAsync(id.Value) : new ProductCustomField();
+        if (f == null) return NotFound();
+        return View(f);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? networkId, string? dbPhysicalType, bool active)
+    {
+        var f = new ProductCustomField { Id = id, Code = code ?? "", Name = name ?? "", NetworkId = networkId,
+            DBPhysicalType = dbPhysicalType, Active = active };
+        var err = await svc.SaveProductCustomFieldAsync(f);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu trường động của Hàng hóa.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteProductCustomFieldAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa trường động của Hàng hóa.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class MasterCheckController(IProductService svc) : Controller
 {
     public async Task<IActionResult> Index()

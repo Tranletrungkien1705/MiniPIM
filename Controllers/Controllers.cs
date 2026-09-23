@@ -102,14 +102,34 @@ public class GroupController(IProductService svc) : Controller
 
 public class AttributeController(IProductService svc) : Controller
 {
-    public async Task<IActionResult> Index() => View(await svc.AttributeDefsAsync());
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.AttributeDefsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var a = id.HasValue ? await svc.GetAttributeDefAsync(id.Value) : new AttributeDef();
+        if (a == null) return NotFound();
+        return View(a);
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(string name, string? code)
+    public async Task<IActionResult> Save(int id, string code, string name, string? networkId, bool active)
     {
-        if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên thuộc tính."; return RedirectToAction(nameof(Index)); }
-        await svc.CreateAttributeDefAsync(new AttributeDef { Name = name.Trim(), Code = code ?? "" });
-        TempData["Success"] = "Đã tạo thuộc tính.";
+        var a = new AttributeDef { Id = id, Code = code ?? "", Name = name ?? "", NetworkId = networkId, Active = active };
+        var err = await svc.SaveAttributeDefAsync(a);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu thuộc tính.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteAttributeDefAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa thuộc tính.";
         return RedirectToAction(nameof(Index));
     }
 }

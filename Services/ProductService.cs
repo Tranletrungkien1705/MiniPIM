@@ -20,8 +20,10 @@ public interface IProductService
     Task<ProductGroup?> GetGroupAsync(int id);
     Task<string?> SaveGroupAsync(ProductGroup g);
     Task<string?> DeleteGroupAsync(int id);
-    Task<List<AttributeDef>> AttributeDefsAsync();
-    Task<int> CreateAttributeDefAsync(AttributeDef a);
+    Task<List<AttributeDef>> AttributeDefsAsync(string? q);
+    Task<AttributeDef?> GetAttributeDefAsync(int id);
+    Task<string?> SaveAttributeDefAsync(AttributeDef a);
+    Task<string?> DeleteAttributeDefAsync(int id);
     Task<PimDash> DashboardAsync();
 
     // --- Đơn vị tính (Mst_Unit) ---
@@ -245,14 +247,68 @@ public class ProductService(AppDbContext db) : IProductService
         await db.SaveChangesAsync();
     }
 
-    public Task<List<AttributeDef>> AttributeDefsAsync() => db.AttributeDefs.OrderBy(a => a.Name).ToListAsync();
-
-    public async Task<int> CreateAttributeDefAsync(AttributeDef a)
+    // --- Thuộc tính dùng chung (Mst_Attribute) ---
+    public async Task<List<AttributeDef>> AttributeDefsAsync(string? q)
     {
-        if (string.IsNullOrWhiteSpace(a.Code)) a.Code = $"AT{await db.AttributeDefs.CountAsync() + 1:D2}";
-        db.AttributeDefs.Add(a);
+        var query = db.AttributeDefs.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(a => a.Code.Contains(q) || a.Name.Contains(q) || (a.NetworkId ?? "").Contains(q));
+        return await query.OrderBy(a => a.Name).ToListAsync();
+    }
+
+    public Task<AttributeDef?> GetAttributeDefAsync(int id) => db.AttributeDefs.FirstOrDefaultAsync(a => a.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Attribute_CreateX / Mst_Attribute_UpdateX / Mst_Attribute_CheckDB /
+    /// Mst_Attribute_CheckAttributeName): mã thuộc tính bắt buộc (Mst_Attribute_Create_InvalidAttributeCode),
+    /// mã không trùng trong tổ chức (Mst_Attribute_CheckDB_AttributeExist), tên thuộc tính bắt buộc
+    /// (Mst_Attribute_Create_InvalidAttributeName / Mst_Attribute_UpdateX_InvalidAttributeName),
+    /// tên không trùng trong cùng NetworkID (Mst_Attribute_CheckDB_AttributeExist), khi sửa/xóa phải tồn tại
+    /// (Mst_Attribute_CheckDB_AttributeNotFound). Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveAttributeDefAsync(AttributeDef a)
+    {
+        if (string.IsNullOrWhiteSpace(a.Code)) return "Mã Đặc tính Attribute không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(a.Name)) return "Tên Đặc tính Attribute không hợp lệ.";
+        a.Code = a.Code.Trim(); a.Name = a.Name.Trim();
+        a.NetworkId = string.IsNullOrWhiteSpace(a.NetworkId) ? null : a.NetworkId.Trim();
+
+        // Mst_Attribute_CheckDB: mã không trùng trong tổ chức.
+        var dupCode = await db.AttributeDefs.AnyAsync(x => x.Code == a.Code && x.Id != a.Id);
+        if (dupCode) return $"Mã Đặc tính Attribute '{a.Code}' đã tồn tại.";
+
+        // Mst_Attribute_CheckAttributeName: tên không trùng trong cùng NetworkID.
+        var dupName = await db.AttributeDefs.AnyAsync(x => x.Name == a.Name && x.NetworkId == a.NetworkId && x.Id != a.Id);
+        if (dupName) return $"Tên Đặc tính Attribute '{a.Name}' đã tồn tại.";
+
+        AttributeDef target;
+        if (a.Id > 0)
+        {
+            target = await db.AttributeDefs.FirstOrDefaultAsync(x => x.Id == a.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Đặc tính Attribute của Hàng hóa.");
+            target.Name = a.Name; target.NetworkId = a.NetworkId;
+            target.Active = a.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = a;
+            db.AttributeDefs.Add(target);
+        }
         await db.SaveChangesAsync();
-        return a.Id;
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Attribute_DeleteX / Mst_Attribute_CheckDB):
+    /// thuộc tính phải tồn tại mới cho xóa (Mst_Attribute_CheckDB_AttributeNotFound).
+    /// </summary>
+    public async Task<string?> DeleteAttributeDefAsync(int id)
+    {
+        var a = await db.AttributeDefs.FirstOrDefaultAsync(x => x.Id == id);
+        if (a == null) return "Không tìm thấy thông tin Đặc tính Attribute của Hàng hóa.";
+        db.AttributeDefs.Remove(a);
+        await db.SaveChangesAsync();
+        return null;
     }
 
     // --- Đơn vị tính (Mst_Unit) ---

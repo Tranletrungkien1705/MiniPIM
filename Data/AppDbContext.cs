@@ -51,6 +51,7 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
+        b.Entity<AttributeDef>().Property(x => x.NetworkId).HasMaxLength(50);
         b.Entity<Unit>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();

@@ -14,14 +14,21 @@ public enum ProductStatus { Active = 0, Inactive = 1 }
 /// <summary>Cấp sản phẩm trong hệ thống (ProductLevelSys của ProductCenter).</summary>
 public enum ProductLevel { Root = 0, Base = 1, L2 = 2 }
 
-/// <summary>Danh mục thuộc tính dùng chung (Mst_Attribute) — sản phẩm tham chiếu theo mã.</summary>
+/// <summary>
+/// Danh mục thuộc tính dùng chung (Mst_Attribute của ProductCenter) — sản phẩm tham chiếu
+/// theo mã. AttributeCode là mã hệ thống (duy nhất trong tổ chức), AttributeName là tên
+/// hiển thị (không trùng trong cùng NetworkID), NetworkID là mã dùng chung của network
+/// (đồng bộ giữa các tổ chức).
+/// </summary>
 public class AttributeDef : IOrgOwned
 {
     public int Id { get; set; }
     public Guid OrgId { get; set; }
-    public string Code { get; set; } = "";
-    public string Name { get; set; } = "";
-    public bool Active { get; set; } = true;
+    public string Code { get; set; } = "";        // AttributeCode — mã thuộc tính
+    public string Name { get; set; } = "";        // AttributeName — tên thuộc tính
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
 
 /// <summary>

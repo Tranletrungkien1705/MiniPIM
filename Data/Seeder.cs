@@ -27,10 +27,10 @@ public static class Seeder
         if (!await db.AttributeDefs.AnyAsync())
         {
             db.AttributeDefs.AddRange(
-                new AttributeDef { Code = "CHATLIEU", Name = "Chất liệu" },
-                new AttributeDef { Code = "MAU", Name = "Màu sắc" },
-                new AttributeDef { Code = "SIZE", Name = "Kích cỡ" },
-                new AttributeDef { Code = "XUATXU", Name = "Xuất xứ" });
+                new AttributeDef { Code = "CHATLIEU", Name = "Chất liệu", NetworkId = "CHATLIEU" },
+                new AttributeDef { Code = "MAU", Name = "Màu sắc", NetworkId = "MAU" },
+                new AttributeDef { Code = "SIZE", Name = "Kích cỡ", NetworkId = "SIZE" },
+                new AttributeDef { Code = "XUATXU", Name = "Xuất xứ", NetworkId = "XUATXU" });
             await db.SaveChangesAsync();
         }
         if (!await db.Units.AnyAsync())
@@ -159,6 +159,9 @@ public static class Seeder
         sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");
         // Loại hàng hóa (Mst_ProductType): cột tham chiếu trên Hàng hóa.
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductTypeCode\" text NULL");
+        // Thuộc tính (Mst_Attribute): mã dùng chung network.
+        sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"NetworkId\" text NULL");
+        sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");
         foreach (var s in sql) try { await db.Database.ExecuteSqlRawAsync(s); } catch { }
     }
 }

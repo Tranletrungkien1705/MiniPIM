@@ -1,0 +1,35 @@
+@model List<Spec>
+@{ ViewData["Title"] = "Quy cách"; var q = (string?)ViewBag.Q; }
+<div class="card mb-3"><div class="card-body">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-5"><input name="q" value="@q" class="form-control" placeholder="Tìm theo mã / tên / model..." /></div>
+        <div class="col-auto"><button class="btn btn-outline-primary"><i class="bi bi-search me-1"></i>Tìm</button></div>
+        <div class="col-auto ms-auto"><a href="/Spec/Edit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm quy cách</a></div>
+    </form>
+</div></div>
+<div class="card"><div class="card-body">
+    <h6 class="fw-bold mb-3">Quy cách sản phẩm (Mst_Spec)</h6>
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Mã</th><th>Tên</th><th>Model</th><th>Loại 1 / 2</th><th>Màu</th><th>ĐVT</th><th>Serial/Lô</th><th>Giá</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+        @foreach (var s in Model)
+        {
+            <tr>
+                <td class="fw-semibold"><a href="/Spec/Edit/@s.Id">@s.Code</a></td>
+                <td>@s.Name</td>
+                <td class="text-muted">@s.ModelCode</td>
+                <td class="text-muted">@s.SpecType1 / @s.SpecType2</td>
+                <td>@s.Color</td>
+                <td>@s.DefaultUnitCode</td>
+                <td>
+                    @if (s.FlagHasSerial) { <span class="badge bg-info text-dark">Serial</span> }
+                    @if (s.FlagHasLot) { <span class="badge bg-warning text-dark">Lô</span> }
+                </td>
+                <td><a href="/SpecPrice?specCode=@s.Code" class="badge bg-light text-dark text-decoration-none">@s.Prices.Count dòng giá</a></td>
+                <td>@if (s.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+            </tr>
+        }
+        @if (Model.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-4">Chưa có quy cách.</td></tr> }
+        </tbody>
+    </table>
+</div></div>

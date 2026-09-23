@@ -83,6 +83,61 @@ public class AttributeController(IProductService svc) : Controller
     }
 }
 
+public class SpecController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.SpecsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var s = id.HasValue ? await svc.GetSpecAsync(id.Value) : new Spec();
+        if (s == null) return NotFound();
+        return View(s);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? description, string? modelCode,
+        string? specType1, string? specType2, string? color, bool flagHasSerial, bool flagHasLot,
+        string? defaultUnitCode, string? standardUnitCode, string? remark, bool active)
+    {
+        if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên quy cách."; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        var s = new Spec { Id = id, Code = code ?? "", Name = name.Trim(), Description = description, ModelCode = modelCode,
+            SpecType1 = specType1, SpecType2 = specType2, Color = color, FlagHasSerial = flagHasSerial, FlagHasLot = flagHasLot,
+            DefaultUnitCode = defaultUnitCode, StandardUnitCode = standardUnitCode, Remark = remark, Active = active };
+        var newId = await svc.SaveSpecAsync(s);
+        TempData["Success"] = "Đã lưu quy cách.";
+        return RedirectToAction(nameof(Edit), new { id = newId });
+    }
+}
+
+public class SpecPriceController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? specCode)
+    {
+        ViewBag.SpecCode = specCode;
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        return View(await svc.SpecPricesAsync(specCode));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string specCode, string unitCode, decimal buyPrice, decimal sellPrice,
+        string? currencyCode, string? vatRateCode, decimal discountVnd, DateTime effectDTimeStart, DateTime effectDTimeEnd,
+        string? remark, bool active)
+    {
+        var p = new SpecPrice { Id = id, SpecCode = specCode ?? "", UnitCode = unitCode ?? "", BuyPrice = buyPrice, SellPrice = sellPrice,
+            CurrencyCode = string.IsNullOrWhiteSpace(currencyCode) ? "VND" : currencyCode, VatRateCode = vatRateCode,
+            DiscountVnd = discountVnd, EffectDTimeStart = effectDTimeStart, EffectDTimeEnd = effectDTimeEnd,
+            Remark = remark, Active = active };
+        var err = await svc.SaveSpecPriceAsync(p);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Index), new { specCode }); }
+        TempData["Success"] = "Đã lưu giá theo quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

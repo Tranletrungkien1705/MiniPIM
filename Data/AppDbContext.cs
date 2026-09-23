@@ -14,6 +14,8 @@ public class AppDbContext : DbContext
     public DbSet<ProductAttribute> Attributes => Set<ProductAttribute>();
     public DbSet<BomLine> BomLines => Set<BomLine>();
     public DbSet<AttributeDef> AttributeDefs => Set<AttributeDef>();
+    public DbSet<Spec> Specs => Set<Spec>();
+    public DbSet<SpecPrice> SpecPrices => Set<SpecPrice>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -49,6 +51,20 @@ public class AppDbContext : DbContext
         {
             e.Property(x => x.Quantity).HasPrecision(18, 3);
             e.HasOne(x => x.Product).WithMany(x => x.Bom).HasForeignKey(x => x.ProductId);
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<Spec>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SpecPrice>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.SpecCode, x.UnitCode }).IsUnique();
+            e.Property(x => x.BuyPrice).HasPrecision(18, 2);
+            e.Property(x => x.SellPrice).HasPrecision(18, 2);
+            e.Property(x => x.DiscountVnd).HasPrecision(18, 2);
+            e.HasOne(x => x.Spec).WithMany(x => x.Prices).HasForeignKey(x => x.SpecId);
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

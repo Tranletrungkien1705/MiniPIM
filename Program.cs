@@ -61,6 +61,26 @@ app.MapGet("/api/products/{code}", async (string code, IProductService svc) =>
     });
 });
 
+// Quy cách & bảng giá theo quy cách (Mst_Spec / Mst_SpecPrice).
+app.MapGet("/api/specs", async (string? q, IProductService svc) =>
+{
+    var list = await svc.SpecsAsync(q);
+    return Results.Ok(list.Where(s => s.Active).Select(s => new
+    {
+        s.Code, s.Name, s.ModelCode, s.SpecType1, s.SpecType2, s.Color,
+        s.FlagHasSerial, s.FlagHasLot, s.DefaultUnitCode, s.StandardUnitCode
+    }));
+});
+app.MapGet("/api/specs/{code}/prices", async (string code, IProductService svc) =>
+{
+    var prices = await svc.SpecPricesAsync(code);
+    return Results.Ok(prices.Where(p => p.Active).Select(p => new
+    {
+        p.UnitCode, p.BuyPrice, p.SellPrice, p.CurrencyCode, p.VatRateCode, p.DiscountVnd,
+        effectStart = p.EffectDTimeStart.ToString("yyyy-MM-dd"), effectEnd = p.EffectDTimeEnd.ToString("yyyy-MM-dd")
+    }));
+});
+
 app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(dto.Name)) return Results.BadRequest(new { error = "Cần Name." });

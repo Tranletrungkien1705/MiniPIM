@@ -1,0 +1,68 @@
+@model List<SpecPrice>
+@{
+    ViewData["Title"] = "Bảng giá theo quy cách";
+    var specs = (List<Spec>)ViewBag.Specs;
+    var curSpec = (string?)ViewBag.SpecCode;
+}
+<div class="row g-3">
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm / cập nhật giá</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2"><label class="form-label small text-muted">Quy cách *</label>
+                <select name="specCode" class="form-select" required>
+                    <option value="">— chọn quy cách —</option>
+                    @foreach (var s in specs) { <option value="@s.Code" selected="@(curSpec==s.Code)">@s.Code — @s.Name</option> }
+                </select></div>
+            <div class="mb-2"><label class="form-label small text-muted">ĐVT *</label><input name="unitCode" class="form-control" placeholder="cái" required /></div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small text-muted">Giá mua</label><input name="buyPrice" type="number" step="1000" value="0" class="form-control" /></div>
+                <div class="col-6"><label class="form-label small text-muted">Giá bán</label><input name="sellPrice" type="number" step="1000" value="0" class="form-control" /></div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small text-muted">Tiền tệ</label><input name="currencyCode" value="VND" class="form-control" /></div>
+                <div class="col-6"><label class="form-label small text-muted">Thuế GTGT</label><input name="vatRateCode" class="form-control" placeholder="VAT10" /></div>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Chiết khấu (VND)</label><input name="discountVnd" type="number" step="1000" value="0" class="form-control" /></div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small text-muted">Hiệu lực từ</label><input name="effectDTimeStart" type="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" class="form-control" /></div>
+                <div class="col-6"><label class="form-label small text-muted">Đến</label><input name="effectDTimeEnd" type="date" value="2100-01-01" class="form-control" /></div>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Ghi chú</label><input name="remark" class="form-control" /></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="true" id="active" checked /><label class="form-check-label" for="active">Đang dùng</label></div>
+            <button class="btn btn-primary w-100"><i class="bi bi-check-lg me-1"></i>Lưu giá</button>
+        </form>
+    </div></div></div>
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Bảng giá (Mst_SpecPrice)</h6>
+            <form method="get" class="d-flex gap-2">
+                <select name="specCode" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">— tất cả quy cách —</option>
+                    @foreach (var s in specs) { <option value="@s.Code" selected="@(curSpec==s.Code)">@s.Code</option> }
+                </select>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Quy cách</th><th>ĐVT</th><th class="text-end">Giá mua</th><th class="text-end">Giá bán</th><th>Tiền tệ</th><th>VAT</th><th class="text-end">CK</th><th>Hiệu lực</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@p.SpecCode</td>
+                    <td>@p.UnitCode</td>
+                    <td class="text-end">@p.BuyPrice.ToString("N0")</td>
+                    <td class="text-end fw-semibold">@p.SellPrice.ToString("N0")</td>
+                    <td>@p.CurrencyCode</td>
+                    <td>@p.VatRateCode</td>
+                    <td class="text-end">@p.DiscountVnd.ToString("N0")</td>
+                    <td class="text-muted small">@p.EffectDTimeStart.ToString("dd/MM/yy") → @p.EffectDTimeEnd.ToString("dd/MM/yy")</td>
+                    <td>@if (p.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-4">Chưa có dòng giá.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+</div>

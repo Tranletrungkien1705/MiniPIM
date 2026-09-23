@@ -1,0 +1,35 @@
+@model Spec
+@{ ViewData["Title"] = Model.Id > 0 ? $"Quy cách {Model.Code}" : "Thêm quy cách"; }
+<form asp-action="Save" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div class="row g-3">
+        <div class="col-lg-8"><div class="card"><div class="card-body">
+            <h6 class="fw-bold mb-3">Thông tin quy cách</h6>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label small text-muted">Mã quy cách</label><input name="code" value="@Model.Code" class="form-control" placeholder="tự sinh" /></div>
+                <div class="col-md-8"><label class="form-label small text-muted">Tên *</label><input name="name" value="@Model.Name" class="form-control" required /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Model</label><input name="modelCode" value="@Model.ModelCode" class="form-control" placeholder="mã model" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Loại 1</label><input name="specType1" value="@Model.SpecType1" class="form-control" placeholder="vd SIZE" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Loại 2</label><input name="specType2" value="@Model.SpecType2" class="form-control" placeholder="vd MAU" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Màu</label><input name="color" value="@Model.Color" class="form-control" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">ĐVT mặc định</label><input name="defaultUnitCode" value="@Model.DefaultUnitCode" class="form-control" placeholder="cái" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">ĐVT chuẩn</label><input name="standardUnitCode" value="@Model.StandardUnitCode" class="form-control" placeholder="cái" /></div>
+                <div class="col-12"><label class="form-label small text-muted">Mô tả</label><textarea name="description" class="form-control" rows="2">@Model.Description</textarea></div>
+                <div class="col-12"><label class="form-label small text-muted">Ghi chú</label><input name="remark" value="@Model.Remark" class="form-control" /></div>
+            </div>
+        </div></div></div>
+        <div class="col-lg-4"><div class="card"><div class="card-body">
+            <h6 class="fw-bold mb-3">Thuộc tính quản lý</h6>
+            <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="flagHasSerial" value="true" id="flagHasSerial" checked="@Model.FlagHasSerial" /><label class="form-check-label" for="flagHasSerial">Quản lý theo Serial</label></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="flagHasLot" value="true" id="flagHasLot" checked="@Model.FlagHasLot" /><label class="form-check-label" for="flagHasLot">Quản lý theo Lô</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="active" value="true" id="active" checked="@Model.Active" /><label class="form-check-label" for="active">Đang dùng</label></div>
+            @if (Model.Id > 0)
+            {
+                <hr />
+                <a href="/SpecPrice?specCode=@Model.Code" class="btn btn-outline-primary w-100"><i class="bi bi-cash-coin me-1"></i>Xem bảng giá (@Model.Prices.Count)</a>
+            }
+        </div></div></div>
+    </div>
+    <div class="mt-3"><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu</button> <a href="/Spec" class="btn btn-outline-secondary">Về danh sách</a></div>
+</form>

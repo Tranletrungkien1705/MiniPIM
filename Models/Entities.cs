@@ -90,3 +90,53 @@ public class BomLine : IOrgOwned
     public string Uom { get; set; } = "cái";
     public Product Product { get; set; } = null!;
 }
+
+/// <summary>
+/// Quy cách sản phẩm (Mst_Spec của ProductCenter) — biến thể bán được của một model:
+/// màu, loại 1/2, quản lý serial/lô, ĐVT mặc định & ĐVT chuẩn.
+/// </summary>
+public class Spec : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // SpecCode
+    public string Name { get; set; } = "";        // SpecName
+    public string? Description { get; set; }       // SpecDesc
+    public string? ModelCode { get; set; }         // ModelCode
+    public string? SpecType1 { get; set; }         // SpecType1
+    public string? SpecType2 { get; set; }         // SpecType2
+    public string? Color { get; set; }             // Color
+    public bool FlagHasSerial { get; set; }        // FlagHasSerial
+    public bool FlagHasLot { get; set; }           // FlagHasLOT
+    public string? DefaultUnitCode { get; set; }   // DefaultUnitCode
+    public string? StandardUnitCode { get; set; }  // StandardUnitCode
+    public string? Remark { get; set; }
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+    public List<SpecPrice> Prices { get; set; } = [];
+}
+
+/// <summary>
+/// Bảng giá theo quy cách (Mst_SpecPrice) — khóa nghiệp vụ (SpecCode, UnitCode).
+/// Giá mua/giá bán, tiền tệ, thuế GTGT, chiết khấu và khoảng hiệu lực.
+/// </summary>
+public class SpecPrice : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public int SpecId { get; set; }
+    public string SpecCode { get; set; } = "";
+    public string UnitCode { get; set; } = "";    // ĐVT áp giá
+    public decimal BuyPrice { get; set; }
+    public decimal SellPrice { get; set; }
+    public string CurrencyCode { get; set; } = "VND";
+    public string? VatRateCode { get; set; }
+    public decimal DiscountVnd { get; set; }
+    public DateTime EffectDTimeStart { get; set; } = DateTime.Now;
+    public DateTime EffectDTimeEnd { get; set; } = new DateTime(2100, 1, 1);
+    public string? Remark { get; set; }
+    public bool Active { get; set; } = true;
+
+    public Spec Spec { get; set; } = null!;
+}

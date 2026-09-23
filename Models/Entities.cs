@@ -194,6 +194,7 @@ public class Product : IOrgOwned
     public string? ProductTypeCode { get; set; }                    // ProductType — loại hàng hóa (Mst_ProductType)
     public string? SsccTypeCode { get; set; }                       // SSCCType — loại SSCC (Mst_SSCCType)
     public string? Gtin { get; set; }                               // GTIN — mã thương phẩm toàn cầu (phải là số)
+    public DateTime? DTimeUsed { get; set; }                        // DTimeUsed — ngày hàng hóa bắt đầu được dùng trong nghiệp vụ
 
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 

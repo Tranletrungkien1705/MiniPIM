@@ -52,7 +52,13 @@
                     <div class="form-check"><input class="form-check-input" type="checkbox" name="flagSerial" value="true" id="flagSerial" checked="@Model.FlagSerial" /><label class="form-check-label small" for="flagSerial">Serial</label></div>
                     <div class="form-check"><input class="form-check-input" type="checkbox" name="flagLot" value="true" id="flagLot" checked="@Model.FlagLot" /><label class="form-check-label small" for="flagLot">Lô</label></div>
                 </div>
+                <div class="col-md-3"><label class="form-label small text-muted">Ngày ngừng sử dụng</label>
+                    <input value="@(Model.DTimeUsed?.ToString("yyyy-MM-dd"))" class="form-control" readonly placeholder="chưa sử dụng" /></div>
             </div>
+            @if (Model.Id > 0 && Model.DTimeUsed.HasValue)
+            {
+                <div class="alert alert-warning mt-3 mb-0 py-2 small"><i class="bi bi-lock me-1"></i>Hàng hóa đã được sử dụng trong nghiệp vụ — không thể đổi cờ Serial/Lô và không thể xóa.</div>
+            }
         </div></div></div>
 
         <div class="col-lg-4">
@@ -76,6 +82,27 @@
     </div>
     <div class="mt-3"><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu</button> <a href="/Product" class="btn btn-outline-secondary">Về danh sách</a></div>
 </form>
+@if (Model.Id > 0)
+{
+    <div class="mt-2 d-flex gap-2">
+        @if (!Model.DTimeUsed.HasValue)
+        {
+            <form asp-action="MarkUsed" method="post" onsubmit="return confirm('Đánh dấu hàng hóa này đã sử dụng? Sau đó không thể đổi Serial/Lô và không thể xóa.');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-outline-warning"><i class="bi bi-check2-circle me-1"></i>Đánh dấu đã sử dụng</button>
+            </form>
+        }
+        @if (!Model.DTimeUsed.HasValue)
+        {
+            <form asp-action="Delete" method="post" onsubmit="return confirm('Xóa hàng hóa này?');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Xóa</button>
+            </form>
+        }
+    </div>
+}
 @section Scripts {
 <script>
 function addAttr(){document.getElementById('attrs').insertAdjacentHTML('beforeend','<div class="d-flex gap-1 mb-1"><input name="attrName" class="form-control form-control-sm" placeholder="Tên"/><input name="attrValue" class="form-control form-control-sm" placeholder="Giá trị"/></div>');}

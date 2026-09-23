@@ -16,6 +16,10 @@ public interface IProductService
     Task<string?> ValidateBomAsync(List<BomLine> bom);
     Task<int> CreateGroupAsync(ProductGroup g);
 
+    // --- Vòng đời hàng hóa: ngày ngừng sử dụng (Mst_Product_UpdateDtimeUsed / Mst_Product_Delete) ---
+    Task<string?> DeleteProductAsync(int id);
+    Task<string?> MarkProductUsedAsync(int id, DateTime? dtimeUsed);
+
     // --- Nhóm hàng phân cấp (Mst_ProductGroup) ---
     Task<ProductGroup?> GetGroupAsync(int id);
     Task<string?> SaveGroupAsync(ProductGroup g);
@@ -132,6 +136,7 @@ public class ProductService(AppDbContext db) : IProductService
             target.VatRateCode = p.VatRateCode; target.FlagSerial = p.FlagSerial; target.FlagLot = p.FlagLot;
             target.Origin = p.Origin; target.QuyCach = p.QuyCach;
             target.ProductTypeCode = p.ProductTypeCode; target.SsccTypeCode = p.SsccTypeCode; target.Gtin = p.Gtin;
+            // Mst_Product_UpdateDtimeUsedX: DTimeUsed một khi đã có thì không đổi qua luồng lưu thường.
             db.Attributes.RemoveRange(target.Attributes);
             db.BomLines.RemoveRange(target.Bom);
         }
@@ -155,6 +160,42 @@ public class ProductService(AppDbContext db) : IProductService
         var bad = await db.Products.Where(p => codes.Contains(p.Code) && (p.FlagSerial || p.FlagLot))
             .Select(p => p.Code).ToListAsync();
         return bad.Count == 0 ? null : $"Thành phần BOM không được quản lý serial/lô: {string.Join(", ", bad)}";
+    }
+
+    // --- Vòng đời hàng hóa: ngày ngừng sử dụng (Mst_Product_UpdateDtimeUsed / Mst_Product_Delete) ---
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_Delete / Mst_Product_Delete_InvalidDTimeUsed):
+    /// hàng hóa phải tồn tại mới cho xóa, và không cho xóa nếu hàng hóa đã được sử dụng
+    /// trong nghiệp vụ (DTimeUsed đã có giá trị) — "Hàng hóa đã được sử dụng trong nghiệp vụ.".
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> DeleteProductAsync(int id)
+    {
+        var p = await db.Products.FirstOrDefaultAsync(x => x.Id == id);
+        if (p == null) return "Không tìm thấy thông tin Hàng hóa.";
+        // Mst_Product_Delete_InvalidDTimeUsed.
+        if (p.DTimeUsed.HasValue) return "Hàng hóa đã được sử dụng trong nghiệp vụ.";
+        db.Products.Remove(p);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_UpdateDtimeUsedX): đánh dấu hàng hóa đã được
+    /// sử dụng trong nghiệp vụ bằng ngày DTimeUsed. Một khi DTimeUsed đã có giá trị thì
+    /// giữ nguyên giá trị cũ (không cho ghi đè). Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> MarkProductUsedAsync(int id, DateTime? dtimeUsed)
+    {
+        var p = await db.Products.FirstOrDefaultAsync(x => x.Id == id);
+        if (p == null) return "Không tìm thấy thông tin Hàng hóa.";
+        // Mst_Product_UpdateDtimeUsedX: nếu DB đã có DTimeUsed thì giữ nguyên.
+        if (p.DTimeUsed.HasValue) return null;
+        p.DTimeUsed = dtimeUsed ?? DateTime.Now;
+        p.UpdatedAt = DateTime.Now;
+        await db.SaveChangesAsync();
+        return null;
     }
 
     public async Task<int> CreateGroupAsync(ProductGroup g)
@@ -1035,6 +1076,18 @@ public class ProductService(AppDbContext db) : IProductService
     /// </summary>
     public async Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom)
     {
+        // Mst_Product_Update_Input_FlagSerialInvalid / Mst_Product_Update_Input_FlagLotInvalid:
+        // hàng hóa đã được sử dụng (DTimeUsed đã có) thì không cho đổi cờ Quản lý Serial/LOT.
+        if (p.Id > 0)
+        {
+            var existing = await db.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == p.Id);
+            if (existing != null && existing.DTimeUsed.HasValue)
+            {
+                if (existing.FlagSerial != p.FlagSerial) return "Cờ Quản lý Serial cho Hàng hóa không hợp lệ.";
+                if (existing.FlagLot != p.FlagLot) return "Cờ Quản lý LOT cho Hàng hóa không hợp lệ.";
+            }
+        }
+
         // Mst_ProductType_CheckDB: loại hàng hóa phải tồn tại & đang dùng.
         if (!string.IsNullOrWhiteSpace(p.ProductTypeCode))
         {

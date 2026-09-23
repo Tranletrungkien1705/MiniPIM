@@ -65,7 +65,7 @@ public static class Seeder
                 Attributes = [ new() { Name = "Chất liệu", Value = "Denim" } ],
                 Bom = [ new() { ComponentCode = "VAI-DENIM", ComponentName = "Vải denim", Quantity = 1.2m, Uom = "m" }, new() { ComponentCode = "KHOA", ComponentName = "Khóa kéo", Quantity = 1, Uom = "cái" } ] };
             var p3 = new Product { Code = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000,
-                Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10" };
+                Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10", DTimeUsed = new DateTime(2024, 1, 1) };
             db.Products.AddRange(p1, p2, p3);
             await db.SaveChangesAsync();
         }
@@ -170,6 +170,8 @@ public static class Seeder
         // Loại SSCC (Mst_SSCCType): cột tham chiếu + GTIN trên Hàng hóa.
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"SsccTypeCode\" text NULL");
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"Gtin\" text NULL");
+        // Vòng đời hàng hóa (Mst_Product_UpdateDtimeUsed): ngày ngừng sử dụng.
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"DTimeUsed\" timestamp NULL");
         // Thuộc tính (Mst_Attribute): mã dùng chung network.
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"NetworkId\" text NULL");
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");

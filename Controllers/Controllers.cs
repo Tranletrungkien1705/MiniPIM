@@ -56,6 +56,23 @@ public class ProductController(IProductService svc) : Controller
         TempData["Success"] = "Đã lưu sản phẩm.";
         return RedirectToAction(nameof(Edit), new { id = newId });
     }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteProductAsync(id);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id }); }
+        TempData["Success"] = "Đã xóa sản phẩm.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> MarkUsed(int id, DateTime? dtimeUsed)
+    {
+        var err = await svc.MarkProductUsedAsync(id, dtimeUsed);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã đánh dấu hàng hóa đã sử dụng.";
+        return RedirectToAction(nameof(Edit), new { id });
+    }
 }
 
 public class GroupController(IProductService svc) : Controller

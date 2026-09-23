@@ -56,6 +56,7 @@ app.MapGet("/api/products/{code}", async (string code, IProductService svc) =>
     {
         p.Code, p.Name, group = p.Group?.Name, p.Uom, p.Barcode, p.CostPrice, p.SalePrice, p.Description,
         level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach, p.ProductTypeCode, p.SsccTypeCode, p.Gtin,
+        dtimeUsed = p.DTimeUsed?.ToString("yyyy-MM-dd"),
         attributes = p.Attributes.Select(a => new { a.Name, a.Value }),
         bom = p.Bom.Select(x => new { x.ComponentCode, x.ComponentName, x.Quantity, x.Uom })
     });

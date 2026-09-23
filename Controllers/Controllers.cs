@@ -147,6 +147,40 @@ public class UnitController(IProductService svc) : Controller
     }
 }
 
+public class VatRateController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.VatRatesAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var v = id.HasValue ? await svc.GetVatRateAsync(id.Value) : new VatRate();
+        if (v == null) return NotFound();
+        return View(v);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, decimal rate, string name, bool active)
+    {
+        var v = new VatRate { Id = id, Code = code ?? "", Rate = rate, Name = name ?? "", Active = active };
+        var err = await svc.SaveVatRateAsync(v);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu thuế suất.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteVatRateAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa thuế suất.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class SpecController(IProductService svc) : Controller
 {
     public async Task<IActionResult> Index(string? q)

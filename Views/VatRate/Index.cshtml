@@ -1,0 +1,48 @@
+@model List<VatRate>
+@{ ViewData["Title"] = "Thuế suất GTGT"; }
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Danh mục thuế suất GTGT</h6>
+            <form class="d-flex" method="get">
+                <input name="q" value="@ViewBag.Q" class="form-control form-control-sm me-2" placeholder="Tìm mã / tên..." />
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Mã thuế suất</th><th>Tên / mô tả</th><th class="text-end">Thuế suất (%)</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var v in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@v.Code</td>
+                    <td>@v.Name</td>
+                    <td class="text-end">@v.Rate.ToString("0.##")</td>
+                    <td>@if (v.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/VatRate/Edit/@v.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa thuế suất này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@v.Id" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="5" class="text-center text-muted py-4">Chưa có thuế suất.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm thuế suất</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2"><label class="form-label small text-muted">Mã thuế suất *</label><input name="code" class="form-control" required placeholder="vd: VAT10" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên / mô tả *</label><input name="name" class="form-control" required placeholder="vd: Thuế GTGT 10%" /></div>
+            <div class="mb-3"><label class="form-label small text-muted">Thuế suất (%)</label><input name="rate" type="number" step="0.01" min="0" value="0" class="form-control" /></div>
+            <input type="hidden" name="active" value="true" />
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+        </form>
+    </div></div></div>
+</div>

@@ -42,6 +42,22 @@ public class Unit : IOrgOwned
 }
 
 /// <summary>
+/// Thuế suất GTGT (Mst_VATRate của ProductCenter) — danh mục dùng chung cho
+/// sản phẩm (Product.VatRateCode) và bảng giá theo quy cách (SpecPrice.VatRateCode).
+/// VATRateCode là mã hệ thống, VATRate là giá trị %, VATDesc là mô tả/tên hiển thị.
+/// </summary>
+public class VatRate : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // VATRateCode — mã thuế suất
+    public decimal Rate { get; set; }              // VATRate — giá trị %
+    public string Name { get; set; } = "";        // VATDesc — mô tả/tên hiển thị
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).

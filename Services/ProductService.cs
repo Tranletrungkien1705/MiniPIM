@@ -36,6 +36,12 @@ public interface IProductService
     Task<int> SaveSpecAsync(Spec s);
     Task<List<SpecPrice>> SpecPricesAsync(string? specCode);
     Task<string?> SaveSpecPriceAsync(SpecPrice p);
+
+    // --- Thuế suất GTGT (Mst_VATRate) ---
+    Task<List<VatRate>> VatRatesAsync(string? q);
+    Task<VatRate?> GetVatRateAsync(int id);
+    Task<string?> SaveVatRateAsync(VatRate v);
+    Task<string?> DeleteVatRateAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -343,6 +349,60 @@ public class ProductService(AppDbContext db) : IProductService
             p.SpecId = spec.Id;
             db.SpecPrices.Add(p);
         }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Thuế suất GTGT (Mst_VATRate) ---
+    public async Task<List<VatRate>> VatRatesAsync(string? q)
+    {
+        var query = db.VatRates.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(v => v.Code.Contains(q) || v.Name.Contains(q));
+        return await query.OrderBy(v => v.Code).ToListAsync();
+    }
+
+    public Task<VatRate?> GetVatRateAsync(int id) => db.VatRates.FirstOrDefaultAsync(v => v.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_VATRate_Create / Mst_VATRate_Update / Mst_VATRate_CheckDB):
+    /// mã thuế suất & tên (VATDesc) bắt buộc, mã không trùng; khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveVatRateAsync(VatRate v)
+    {
+        if (string.IsNullOrWhiteSpace(v.Code)) return "Mã Thuế suất không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(v.Name)) return "Tên Thuế suất không hợp lệ.";
+        v.Code = v.Code.Trim(); v.Name = v.Name.Trim();
+        if (v.Rate < 0) return "Giá trị Thuế suất không hợp lệ.";
+
+        var dupCode = await db.VatRates.AnyAsync(x => x.Code == v.Code && x.Id != v.Id);
+        if (dupCode) return $"Mã Thuế suất '{v.Code}' đã tồn tại.";
+
+        VatRate target;
+        if (v.Id > 0)
+        {
+            target = await db.VatRates.FirstOrDefaultAsync(x => x.Id == v.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Thuế suất.");
+            target.Name = v.Name; target.Rate = v.Rate; target.Active = v.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = v;
+            db.VatRates.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_VATRate_Delete): thuế suất phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteVatRateAsync(int id)
+    {
+        var v = await db.VatRates.FirstOrDefaultAsync(x => x.Id == id);
+        if (v == null) return "Không tìm thấy thông tin Thuế suất.";
+        db.VatRates.Remove(v);
         await db.SaveChangesAsync();
         return null;
     }

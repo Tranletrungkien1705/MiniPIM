@@ -44,6 +44,15 @@ public static class Seeder
                 new Unit { Code = "UOM0006", CodeUser = "THUNG", Name = "Thùng" });
             await db.SaveChangesAsync();
         }
+        if (!await db.VatRates.AnyAsync())
+        {
+            db.VatRates.AddRange(
+                new VatRate { Code = "VAT0", Rate = 0, Name = "Không chịu thuế GTGT" },
+                new VatRate { Code = "VAT5", Rate = 5, Name = "Thuế GTGT 5%" },
+                new VatRate { Code = "VAT8", Rate = 8, Name = "Thuế GTGT 8%" },
+                new VatRate { Code = "VAT10", Rate = 10, Name = "Thuế GTGT 10%" });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Products.AnyAsync())
         {
             var groups = await db.Groups.ToListAsync();
@@ -77,7 +86,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

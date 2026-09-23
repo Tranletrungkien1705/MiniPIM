@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<BomLine> BomLines => Set<BomLine>();
     public DbSet<AttributeDef> AttributeDefs => Set<AttributeDef>();
     public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<VatRate> VatRates => Set<VatRate>();
     public DbSet<Spec> Specs => Set<Spec>();
     public DbSet<SpecPrice> SpecPrices => Set<SpecPrice>();
 
@@ -48,6 +49,12 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasIndex(x => new { x.OrgId, x.CodeUser }).IsUnique();
             e.HasIndex(x => new { x.OrgId, x.Name }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<VatRate>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.Property(x => x.Rate).HasPrecision(9, 2);
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
         b.Entity<ProductAttribute>(e =>

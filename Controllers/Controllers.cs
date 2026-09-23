@@ -565,6 +565,83 @@ public class SsccTypeController(IProductService svc) : Controller
     }
 }
 
+public class ProductImageController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? productCode)
+    {
+        ViewBag.ProductCode = productCode;
+        ViewBag.Products = await svc.ProductsAsync(null, null);
+        return View(await svc.ProductImagesAsync(productCode));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Products = await svc.ProductsAsync(null, null);
+        var img = id.HasValue ? await svc.GetProductImageAsync(id.Value) : new ProductImage();
+        if (img == null) return NotFound();
+        return View(img);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string productCode, int idx, string? networkId, string? imagePath,
+        string? imageName, string? imageDesc, bool flagPrimaryImage, bool active)
+    {
+        var img = new ProductImage { Id = id, ProductCode = productCode ?? "", Idx = idx, NetworkId = networkId,
+            ImagePath = imagePath, ImageName = imageName, ImageDesc = imageDesc,
+            FlagPrimaryImage = flagPrimaryImage, Active = active };
+        var err = await svc.SaveProductImageAsync(img);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu ảnh hàng hóa.";
+        return RedirectToAction(nameof(Index), new { productCode });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? productCode)
+    {
+        var err = await svc.DeleteProductImageAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa ảnh hàng hóa.";
+        return RedirectToAction(nameof(Index), new { productCode });
+    }
+}
+
+public class ProductFileController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? productCode)
+    {
+        ViewBag.ProductCode = productCode;
+        ViewBag.Products = await svc.ProductsAsync(null, null);
+        return View(await svc.ProductFilesAsync(productCode));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Products = await svc.ProductsAsync(null, null);
+        var f = id.HasValue ? await svc.GetProductFileAsync(id.Value) : new ProductFile();
+        if (f == null) return NotFound();
+        return View(f);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string productCode, int idx, string? networkId, string? filePath,
+        string? fileName, string? fileDesc, bool active)
+    {
+        var f = new ProductFile { Id = id, ProductCode = productCode ?? "", Idx = idx, NetworkId = networkId,
+            FilePath = filePath, FileName = fileName, FileDesc = fileDesc, Active = active };
+        var err = await svc.SaveProductFileAsync(f);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu file đính kèm hàng hóa.";
+        return RedirectToAction(nameof(Index), new { productCode });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? productCode)
+    {
+        var err = await svc.DeleteProductFileAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa file đính kèm hàng hóa.";
+        return RedirectToAction(nameof(Index), new { productCode });
+    }
+}
+
 public class MasterCheckController(IProductService svc) : Controller
 {
     public async Task<IActionResult> Index()

@@ -97,6 +97,18 @@ public interface IProductService
     Task<string?> SaveSsccTypeAsync(SsccType s);
     Task<string?> DeleteSsccTypeAsync(int id);
 
+    // --- Ảnh hàng hóa (Mst_ProductImages) ---
+    Task<List<ProductImage>> ProductImagesAsync(string? productCode);
+    Task<ProductImage?> GetProductImageAsync(int id);
+    Task<string?> SaveProductImageAsync(ProductImage img);
+    Task<string?> DeleteProductImageAsync(int id);
+
+    // --- Tệp đính kèm hàng hóa (Mst_ProductFiles) ---
+    Task<List<ProductFile>> ProductFilesAsync(string? productCode);
+    Task<ProductFile?> GetProductFileAsync(int id);
+    Task<string?> SaveProductFileAsync(ProductFile f);
+    Task<string?> DeleteProductFileAsync(int id);
+
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
     Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
     Task<List<MasterIssue>> AuditMasterAsync();
@@ -1064,6 +1076,127 @@ public class ProductService(AppDbContext db) : IProductService
         if (await db.Products.AnyAsync(p => p.SsccTypeCode == s.Code))
             return $"Loại SSCC '{s.Name}' đã sử dụng trong Hàng hóa, không thể xóa.";
         db.SsccTypes.Remove(s);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Ảnh hàng hóa (Mst_ProductImages) ---
+    public async Task<List<ProductImage>> ProductImagesAsync(string? productCode)
+    {
+        var query = db.ProductImages.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(productCode)) query = query.Where(i => i.ProductCode == productCode);
+        return await query.OrderBy(i => i.ProductCode).ThenBy(i => i.Idx).ToListAsync();
+    }
+
+    public Task<ProductImage?> GetProductImageAsync(int id) => db.ProductImages.FirstOrDefaultAsync(i => i.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CreateX / Mst_Product_UpdateMasterX — phần Mst_ProductImages):
+    /// ảnh phải thuộc một Hàng hóa tồn tại (ProductCode bắt buộc), đường dẫn ảnh bắt buộc
+    /// (Mst_Product_Create_Input_Mst_ProductImagesTblNotFound — "Không tìm thấy Ảnh của Hàng hóa."),
+    /// mỗi hàng hóa chỉ có tối đa 1 ảnh chính (FlagPrimaryImage). Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveProductImageAsync(ProductImage img)
+    {
+        if (string.IsNullOrWhiteSpace(img.ProductCode)) return "Cần chọn Hàng hóa cho Ảnh.";
+        img.ProductCode = img.ProductCode.Trim();
+        if (!await db.Products.AnyAsync(p => p.Code == img.ProductCode))
+            return $"Không tìm thấy Hàng hóa '{img.ProductCode}'.";
+        if (string.IsNullOrWhiteSpace(img.ImagePath)) return "Đường dẫn Ảnh không hợp lệ.";
+        img.ImagePath = img.ImagePath.Trim();
+        img.ImageName = string.IsNullOrWhiteSpace(img.ImageName) ? null : img.ImageName.Trim();
+        img.NetworkId = string.IsNullOrWhiteSpace(img.NetworkId) ? null : img.NetworkId.Trim();
+
+        // Mỗi hàng hóa chỉ có tối đa 1 ảnh chính.
+        if (img.FlagPrimaryImage)
+        {
+            var others = await db.ProductImages.Where(x => x.ProductCode == img.ProductCode && x.Id != img.Id && x.FlagPrimaryImage).ToListAsync();
+            foreach (var o in others) o.FlagPrimaryImage = false;
+        }
+
+        ProductImage target;
+        if (img.Id > 0)
+        {
+            target = await db.ProductImages.FirstOrDefaultAsync(x => x.Id == img.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy Ảnh của Hàng hóa.");
+            target.Idx = img.Idx; target.NetworkId = img.NetworkId; target.ImagePath = img.ImagePath;
+            target.ImageName = img.ImageName; target.ImageDesc = img.ImageDesc;
+            target.FlagPrimaryImage = img.FlagPrimaryImage; target.Active = img.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = img;
+            db.ProductImages.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductImages): ảnh phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteProductImageAsync(int id)
+    {
+        var img = await db.ProductImages.FirstOrDefaultAsync(x => x.Id == id);
+        if (img == null) return "Không tìm thấy Ảnh của Hàng hóa.";
+        db.ProductImages.Remove(img);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Tệp đính kèm hàng hóa (Mst_ProductFiles) ---
+    public async Task<List<ProductFile>> ProductFilesAsync(string? productCode)
+    {
+        var query = db.ProductFiles.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(productCode)) query = query.Where(f => f.ProductCode == productCode);
+        return await query.OrderBy(f => f.ProductCode).ThenBy(f => f.Idx).ToListAsync();
+    }
+
+    public Task<ProductFile?> GetProductFileAsync(int id) => db.ProductFiles.FirstOrDefaultAsync(f => f.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CreateX / Mst_Product_UpdateMasterX — phần Mst_ProductFiles):
+    /// tệp phải thuộc một Hàng hóa tồn tại (ProductCode bắt buộc), đường dẫn tệp bắt buộc
+    /// (Mst_Product_Create_Input_Mst_ProductFilesTblNotFound — "Không tìm thấy File đính kèm của Hàng hóa.").
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveProductFileAsync(ProductFile f)
+    {
+        if (string.IsNullOrWhiteSpace(f.ProductCode)) return "Cần chọn Hàng hóa cho File đính kèm.";
+        f.ProductCode = f.ProductCode.Trim();
+        if (!await db.Products.AnyAsync(p => p.Code == f.ProductCode))
+            return $"Không tìm thấy Hàng hóa '{f.ProductCode}'.";
+        if (string.IsNullOrWhiteSpace(f.FilePath)) return "Đường dẫn File đính kèm không hợp lệ.";
+        f.FilePath = f.FilePath.Trim();
+        f.FileName = string.IsNullOrWhiteSpace(f.FileName) ? null : f.FileName.Trim();
+        f.NetworkId = string.IsNullOrWhiteSpace(f.NetworkId) ? null : f.NetworkId.Trim();
+
+        ProductFile target;
+        if (f.Id > 0)
+        {
+            target = await db.ProductFiles.FirstOrDefaultAsync(x => x.Id == f.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy File đính kèm của Hàng hóa.");
+            target.Idx = f.Idx; target.NetworkId = f.NetworkId; target.FilePath = f.FilePath;
+            target.FileName = f.FileName; target.FileDesc = f.FileDesc;
+            target.Active = f.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = f;
+            db.ProductFiles.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductFiles): tệp đính kèm phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteProductFileAsync(int id)
+    {
+        var f = await db.ProductFiles.FirstOrDefaultAsync(x => x.Id == id);
+        if (f == null) return "Không tìm thấy File đính kèm của Hàng hóa.";
+        db.ProductFiles.Remove(f);
         await db.SaveChangesAsync();
         return null;
     }

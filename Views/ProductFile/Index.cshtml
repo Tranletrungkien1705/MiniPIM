@@ -1,0 +1,71 @@
+@model List<ProductFile>
+@{
+    ViewData["Title"] = "File đính kèm hàng hóa";
+    var products = ViewBag.Products as List<Product> ?? new();
+    string? cur = ViewBag.ProductCode as string;
+}
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">File đính kèm của hàng hóa</h6>
+            <form class="d-flex" method="get">
+                <select name="productCode" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                    <option value="">— Tất cả hàng hóa —</option>
+                    @foreach (var p in products)
+                    {
+                        <option value="@p.Code" selected="@(p.Code == cur)">@p.Code — @p.Name</option>
+                    }
+                </select>
+                <noscript><button class="btn btn-sm btn-outline-primary">Lọc</button></noscript>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Hàng hóa</th><th>Thứ tự</th><th>File</th><th>Mô tả</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var f in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@f.ProductCode</td>
+                    <td>@f.Idx</td>
+                    <td>
+                        <a href="@f.FilePath" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i>@(f.FileName ?? f.FilePath)</a>
+                    </td>
+                    <td class="text-muted small">@f.FileDesc</td>
+                    <td>@if (f.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/ProductFile/Edit/@f.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa file này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@f.Id" />
+                            <input type="hidden" name="productCode" value="@cur" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="6" class="text-center text-muted py-4">Chưa có file đính kèm.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm file đính kèm</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2">
+                <label class="form-label small text-muted">Hàng hóa *</label>
+                <select name="productCode" class="form-select" required>
+                    <option value="">— Chọn hàng hóa —</option>
+                    @foreach (var p in products) { <option value="@p.Code">@p.Code — @p.Name</option> }
+                </select>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Thứ tự</label><input name="idx" type="number" value="0" class="form-control" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Đường dẫn file *</label><input name="filePath" class="form-control" required placeholder="vd: /files/ao-001.pdf" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên file</label><input name="fileName" class="form-control" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Mô tả</label><input name="fileDesc" class="form-control" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Network ID</label><input name="networkId" class="form-control" /></div>
+            <input type="hidden" name="active" value="true" />
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+        </form>
+    </div></div></div>
+</div>

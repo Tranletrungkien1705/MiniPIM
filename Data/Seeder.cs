@@ -23,16 +23,28 @@ public static class Seeder
                 new ProductGroup { Code = "PK", Name = "Phụ kiện" });
             await db.SaveChangesAsync();
         }
+        if (!await db.AttributeDefs.AnyAsync())
+        {
+            db.AttributeDefs.AddRange(
+                new AttributeDef { Code = "CHATLIEU", Name = "Chất liệu" },
+                new AttributeDef { Code = "MAU", Name = "Màu sắc" },
+                new AttributeDef { Code = "SIZE", Name = "Kích cỡ" },
+                new AttributeDef { Code = "XUATXU", Name = "Xuất xứ" });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Products.AnyAsync())
         {
             var groups = await db.Groups.ToListAsync();
             int GId(string c) => groups.First(g => g.Code == c).Id;
             var p1 = new Product { Code = "AO-001", Name = "Áo sơ mi trắng basic", GroupId = GId("AO"), Uom = "cái", Barcode = "8930001", CostPrice = 120000, SalePrice = 250000,
+                Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 20, QtyMaxSt = 500, VatRateCode = "VAT10", Origin = "Việt Nam", QuyCach = "1 cái/túi",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Cotton 100%" }, new() { Name = "Màu", Value = "Trắng" } ] };
             var p2 = new Product { Code = "QUAN-001", Name = "Quần jeans slim", GroupId = GId("QUAN"), Uom = "cái", CostPrice = 200000, SalePrice = 450000,
+                Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 10, QtyMaxSt = 300, VatRateCode = "VAT10", Origin = "Việt Nam",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Denim" } ],
                 Bom = [ new() { ComponentCode = "VAI-DENIM", ComponentName = "Vải denim", Quantity = 1.2m, Uom = "m" }, new() { ComponentCode = "KHOA", ComponentName = "Khóa kéo", Quantity = 1, Uom = "cái" } ] };
-            var p3 = new Product { Code = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000 };
+            var p3 = new Product { Code = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000,
+                Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10" };
             db.Products.AddRange(p1, p2, p3);
             await db.SaveChangesAsync();
         }
@@ -42,7 +54,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

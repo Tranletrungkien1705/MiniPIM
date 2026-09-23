@@ -30,11 +30,15 @@ public class ProductController(IProductService svc) : Controller
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(int id, string code, string name, int? groupId, string uom, string? barcode,
         decimal costPrice, decimal salePrice, string? description, ProductStatus status,
+        ProductLevel level, decimal valConvert, decimal qtyMinSt, decimal qtyMaxSt, string? vatRateCode,
+        bool flagSerial, bool flagLot, string? origin, string? quyCach,
         string[]? attrName, string[]? attrValue, string[]? bomCode, string[]? bomName, decimal[]? bomQty, string[]? bomUom)
     {
         if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên sản phẩm."; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         var p = new Product { Id = id, Code = code ?? "", Name = name.Trim(), GroupId = groupId, Uom = string.IsNullOrWhiteSpace(uom) ? "cái" : uom,
-            Barcode = barcode, CostPrice = costPrice, SalePrice = salePrice, Description = description, Status = status };
+            Barcode = barcode, CostPrice = costPrice, SalePrice = salePrice, Description = description, Status = status,
+            Level = level, ValConvert = valConvert <= 0 ? 1 : valConvert, QtyMinSt = qtyMinSt, QtyMaxSt = qtyMaxSt,
+            VatRateCode = vatRateCode, FlagSerial = flagSerial, FlagLot = flagLot, Origin = origin, QuyCach = quyCach };
         var attrs = new List<ProductAttribute>();
         for (int i = 0; attrName != null && i < attrName.Length; i++)
             attrs.Add(new ProductAttribute { Name = attrName[i], Value = i < (attrValue?.Length ?? 0) ? attrValue![i] : "" });
@@ -42,6 +46,9 @@ public class ProductController(IProductService svc) : Controller
         for (int i = 0; bomName != null && i < bomName.Length; i++)
             bom.Add(new BomLine { ComponentCode = i < (bomCode?.Length ?? 0) ? bomCode![i] : "", ComponentName = bomName[i],
                 Quantity = i < (bomQty?.Length ?? 0) ? bomQty![i] : 1, Uom = i < (bomUom?.Length ?? 0) ? bomUom![i] : "cái" });
+        // Nghiệp vụ ProductCenter: thành phần BOM không được quản lý serial/lô.
+        var err = await svc.ValidateBomAsync(bom);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         var newId = await svc.SaveProductAsync(p, attrs, bom);
         TempData["Success"] = "Đã lưu sản phẩm.";
         return RedirectToAction(nameof(Edit), new { id = newId });
@@ -58,6 +65,20 @@ public class GroupController(IProductService svc) : Controller
         if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên nhóm."; return RedirectToAction(nameof(Index)); }
         await svc.CreateGroupAsync(new ProductGroup { Name = name.Trim(), Code = code ?? "" });
         TempData["Success"] = "Đã tạo nhóm.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
+public class AttributeController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index() => View(await svc.AttributeDefsAsync());
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(string name, string? code)
+    {
+        if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên thuộc tính."; return RedirectToAction(nameof(Index)); }
+        await svc.CreateAttributeDefAsync(new AttributeDef { Name = name.Trim(), Code = code ?? "" });
+        TempData["Success"] = "Đã tạo thuộc tính.";
         return RedirectToAction(nameof(Index));
     }
 }

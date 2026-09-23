@@ -1,0 +1,3 @@
+# DEEPEN-LOG — MiniPIM
+
+- 2026: Port nghiệp vụ **Product Master enrichment** từ `2019.4.ProductCenter` (TblMst_Product / Mst_Attribute): thêm danh mục thuộc tính dùng chung (AttributeDef) + các trường master sản phẩm (ProductLevelSys→Level, ValConvert, QtyMinSt/QtyMaxSt, VATRateCode, FlagSerial/FlagLot, ProductOrigin, ProductQuyCach) + quy tắc nghiệp vụ "thành phần BOM không được quản lý serial/lô" (Mst_Product_Create_Invalid_Prd_BOM_FlagSerialOrFlagLot). Thêm màn /Attribute, mở rộng form Product, API /api/products/{code} trả thêm trường master. Build Release 0 error, smoke test /Attribute=200 + API OK.

@@ -27,6 +27,26 @@
                     </select></div>
                 <div class="col-12"><label class="form-label small text-muted">Mô tả</label><textarea name="description" class="form-control" rows="2">@Model.Description</textarea></div>
             </div>
+            <hr class="my-3" />
+            <h6 class="fw-bold mb-3">Thông tin master (PIM)</h6>
+            <div class="row g-3">
+                <div class="col-md-3"><label class="form-label small text-muted">Cấp sản phẩm</label>
+                    <select name="level" class="form-select">
+                        <option value="0" selected="@(Model.Level==ProductLevel.Root)">Gốc (ROOTPRD)</option>
+                        <option value="1" selected="@(Model.Level==ProductLevel.Base)">Cơ sở (BASEPRD)</option>
+                        <option value="2" selected="@(Model.Level==ProductLevel.L2)">Cấp 2 (L2PRD)</option>
+                    </select></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Hệ số quy đổi</label><input name="valConvert" type="number" step="0.001" value="@Model.ValConvert" class="form-control" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Tồn tối thiểu</label><input name="qtyMinSt" type="number" step="0.001" value="@Model.QtyMinSt" class="form-control" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Tồn tối đa</label><input name="qtyMaxSt" type="number" step="0.001" value="@Model.QtyMaxSt" class="form-control" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Mã thuế GTGT</label><input name="vatRateCode" value="@Model.VatRateCode" class="form-control" placeholder="VAT10" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Xuất xứ</label><input name="origin" value="@Model.Origin" class="form-control" /></div>
+                <div class="col-md-3"><label class="form-label small text-muted">Quy cách</label><input name="quyCach" value="@Model.QuyCach" class="form-control" placeholder="1 cái/túi" /></div>
+                <div class="col-md-3 d-flex align-items-end gap-3">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="flagSerial" value="true" id="flagSerial" checked="@Model.FlagSerial" /><label class="form-check-label small" for="flagSerial">Serial</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="flagLot" value="true" id="flagLot" checked="@Model.FlagLot" /><label class="form-check-label small" for="flagLot">Lô</label></div>
+                </div>
+            </div>
         </div></div></div>
 
         <div class="col-lg-4">

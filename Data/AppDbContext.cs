@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductAttribute> Attributes => Set<ProductAttribute>();
     public DbSet<BomLine> BomLines => Set<BomLine>();
+    public DbSet<AttributeDef> AttributeDefs => Set<AttributeDef>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -28,7 +29,15 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.Property(x => x.CostPrice).HasPrecision(18, 2);
             e.Property(x => x.SalePrice).HasPrecision(18, 2);
+            e.Property(x => x.ValConvert).HasPrecision(18, 3);
+            e.Property(x => x.QtyMinSt).HasPrecision(18, 3);
+            e.Property(x => x.QtyMaxSt).HasPrecision(18, 3);
             e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<AttributeDef>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
         b.Entity<ProductAttribute>(e =>

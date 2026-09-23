@@ -11,6 +11,19 @@ public interface IOrgOwned { Guid OrgId { get; set; } }
 
 public enum ProductStatus { Active = 0, Inactive = 1 }
 
+/// <summary>Cấp sản phẩm trong hệ thống (ProductLevelSys của ProductCenter).</summary>
+public enum ProductLevel { Root = 0, Base = 1, L2 = 2 }
+
+/// <summary>Danh mục thuộc tính dùng chung (Mst_Attribute) — sản phẩm tham chiếu theo mã.</summary>
+public class AttributeDef : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public bool Active { get; set; } = true;
+}
+
 /// <summary>Nhóm sản phẩm (phân cấp 1 tầng cho demo).</summary>
 public class ProductGroup : IOrgOwned
 {
@@ -35,6 +48,18 @@ public class Product : IOrgOwned
     public string? ImageUrl { get; set; }
     public string? Description { get; set; }
     public ProductStatus Status { get; set; } = ProductStatus.Active;
+
+    // --- Trường master bổ sung theo ProductCenter (TblMst_Product) ---
+    public ProductLevel Level { get; set; } = ProductLevel.Base;   // ProductLevelSys
+    public decimal ValConvert { get; set; } = 1;                    // hệ số quy đổi ĐVT
+    public decimal QtyMinSt { get; set; }                           // tồn tối thiểu
+    public decimal QtyMaxSt { get; set; }                           // tồn tối đa
+    public string? VatRateCode { get; set; }                        // mã thuế GTGT
+    public bool FlagSerial { get; set; }                            // quản lý theo serial
+    public bool FlagLot { get; set; }                               // quản lý theo lô
+    public string? Origin { get; set; }                             // xuất xứ (ProductOrigin)
+    public string? QuyCach { get; set; }                            // quy cách đóng gói (ProductQuyCach)
+
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 
     public ProductGroup? Group { get; set; }

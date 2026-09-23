@@ -66,15 +66,16 @@ public class GroupController(IProductService svc) : Controller
     public async Task<IActionResult> Edit(int? id)
     {
         ViewBag.Groups = await svc.GroupsAsync();
+        ViewBag.Brands = await svc.BrandsAsync(null);
         var g = id.HasValue ? await svc.GetGroupAsync(id.Value) : new ProductGroup();
         if (g == null) return NotFound();
         return View(g);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Save(int id, string code, string name, string? parentCode, bool flagFG, bool active)
+    public async Task<IActionResult> Save(int id, string code, string name, string? parentCode, string? brandCode, bool flagFG, bool active)
     {
-        var g = new ProductGroup { Id = id, Code = code ?? "", Name = name ?? "", ParentCode = parentCode, FlagFG = flagFG, Active = active };
+        var g = new ProductGroup { Id = id, Code = code ?? "", Name = name ?? "", ParentCode = parentCode, BrandCode = brandCode, FlagFG = flagFG, Active = active };
         var err = await svc.SaveGroupAsync(g);
         if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         TempData["Success"] = "Đã lưu nhóm hàng.";
@@ -233,6 +234,40 @@ public class SpecPriceController(IProductService svc) : Controller
         if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Index), new { specCode }); }
         TempData["Success"] = "Đã lưu giá theo quy cách.";
         return RedirectToAction(nameof(Index), new { specCode });
+    }
+}
+
+public class BrandController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.BrandsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var b = id.HasValue ? await svc.GetBrandAsync(id.Value) : new Brand();
+        if (b == null) return NotFound();
+        return View(b);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? networkBrandCode, string? remark, bool active)
+    {
+        var b = new Brand { Id = id, Code = code ?? "", Name = name ?? "", NetworkBrandCode = networkBrandCode, Remark = remark, Active = active };
+        var err = await svc.SaveBrandAsync(b);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu nhãn hiệu.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteBrandAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa nhãn hiệu.";
+        return RedirectToAction(nameof(Index));
     }
 }
 

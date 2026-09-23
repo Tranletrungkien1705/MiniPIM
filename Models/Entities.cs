@@ -58,6 +58,24 @@ public class VatRate : IOrgOwned
 }
 
 /// <summary>
+/// Nhãn hiệu / Thương hiệu (Mst_Brand của ProductCenter) — danh mục dùng chung
+/// cho product master: nhóm hàng tham chiếu theo BrandCode. BrandCode là mã hệ
+/// thống (duy nhất trong tổ chức), BrandName là tên hiển thị, NetworkBrandCode
+/// là mã nhãn hiệu chung của network (dùng khi đồng bộ giữa các tổ chức).
+/// </summary>
+public class Brand : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // BrandCode — mã nhãn hiệu
+    public string Name { get; set; } = "";        // BrandName — tên nhãn hiệu
+    public string? NetworkBrandCode { get; set; }  // NetworkBrandCode — mã nhãn hiệu chung network
+    public string? Remark { get; set; }            // Remark — ghi chú
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).
@@ -71,6 +89,7 @@ public class ProductGroup : IOrgOwned
 
     // --- Phân cấp & đường dẫn (Mst_ProductGroup) ---
     public string? ParentCode { get; set; }        // ProductGrpCodeParent
+    public string? BrandCode { get; set; }         // BrandCode — nhãn hiệu của nhóm (Mst_Brand)
     public string BUCode { get; set; } = "";      // ProductGrpBUCode — đường dẫn mã, vd "ALL.AO.SOMI"
     public string BUPattern { get; set; } = "";    // ProductGrpBUPattern — dùng LIKE để lấy cả cây con
     public int Level { get; set; }                 // ProductGrpLevel — 0 = gốc

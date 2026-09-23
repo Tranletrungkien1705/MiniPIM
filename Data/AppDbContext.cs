@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<VatRate> VatRates => Set<VatRate>();
     public DbSet<Spec> Specs => Set<Spec>();
     public DbSet<SpecPrice> SpecPrices => Set<SpecPrice>();
+    public DbSet<Brand> Brands => Set<Brand>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -80,6 +81,11 @@ public class AppDbContext : DbContext
             e.Property(x => x.SellPrice).HasPrecision(18, 2);
             e.Property(x => x.DiscountVnd).HasPrecision(18, 2);
             e.HasOne(x => x.Spec).WithMany(x => x.Prices).HasForeignKey(x => x.SpecId);
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<Brand>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

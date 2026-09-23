@@ -42,6 +42,12 @@ public interface IProductService
     Task<VatRate?> GetVatRateAsync(int id);
     Task<string?> SaveVatRateAsync(VatRate v);
     Task<string?> DeleteVatRateAsync(int id);
+
+    // --- Nhãn hiệu (Mst_Brand) ---
+    Task<List<Brand>> BrandsAsync(string? q);
+    Task<Brand?> GetBrandAsync(int id);
+    Task<string?> SaveBrandAsync(Brand b);
+    Task<string?> DeleteBrandAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -139,7 +145,7 @@ public class ProductService(AppDbContext db) : IProductService
         if (g.Id > 0)
         {
             target = await db.Groups.FirstAsync(x => x.Id == g.Id);
-            target.Name = g.Name; target.ParentCode = g.ParentCode;
+            target.Name = g.Name; target.ParentCode = g.ParentCode; target.BrandCode = g.BrandCode;
             target.FlagFG = g.FlagFG; target.Active = g.Active; target.UpdatedAt = DateTime.Now;
         }
         else
@@ -403,6 +409,64 @@ public class ProductService(AppDbContext db) : IProductService
         var v = await db.VatRates.FirstOrDefaultAsync(x => x.Id == id);
         if (v == null) return "Không tìm thấy thông tin Thuế suất.";
         db.VatRates.Remove(v);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Nhãn hiệu (Mst_Brand) ---
+    public async Task<List<Brand>> BrandsAsync(string? q)
+    {
+        var query = db.Brands.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(b => b.Code.Contains(q) || b.Name.Contains(q));
+        return await query.OrderBy(b => b.Code).ToListAsync();
+    }
+
+    public Task<Brand?> GetBrandAsync(int id) => db.Brands.FirstOrDefaultAsync(b => b.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Brand_Create / Mst_Brand_Update / Mst_Brand_CheckDB):
+    /// mã nhãn hiệu & tên bắt buộc, mã không trùng; khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveBrandAsync(Brand b)
+    {
+        if (string.IsNullOrWhiteSpace(b.Code)) return "Mã Nhãn hiệu không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(b.Name)) return "Tên Nhãn hiệu không hợp lệ.";
+        b.Code = b.Code.Trim(); b.Name = b.Name.Trim();
+
+        var dupCode = await db.Brands.AnyAsync(x => x.Code == b.Code && x.Id != b.Id);
+        if (dupCode) return $"Mã Nhãn hiệu '{b.Code}' đã tồn tại.";
+
+        Brand target;
+        if (b.Id > 0)
+        {
+            target = await db.Brands.FirstOrDefaultAsync(x => x.Id == b.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Nhãn hiệu.");
+            target.Name = b.Name; target.NetworkBrandCode = b.NetworkBrandCode;
+            target.Remark = b.Remark; target.Active = b.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = b;
+            db.Brands.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Brand_DeleteX): nhãn hiệu phải tồn tại mới cho xóa,
+    /// và không cho xóa nếu nhãn hiệu đang được dùng trong Nhóm hàng
+    /// (Mst_Brand_Delete_BrandInProductGroup).
+    /// </summary>
+    public async Task<string?> DeleteBrandAsync(int id)
+    {
+        var b = await db.Brands.FirstOrDefaultAsync(x => x.Id == id);
+        if (b == null) return "Không tìm thấy thông tin Nhãn hiệu.";
+        if (await db.Groups.AnyAsync(g => g.BrandCode == b.Code))
+            return $"Nhãn hiệu '{b.Name}' đã sử dụng trong Nhóm hàng, không thể xóa.";
+        db.Brands.Remove(b);
         await db.SaveChangesAsync();
         return null;
     }

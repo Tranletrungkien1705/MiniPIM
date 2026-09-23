@@ -45,6 +45,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.QtyMinSt).HasPrecision(18, 3);
             e.Property(x => x.QtyMaxSt).HasPrecision(18, 3);
             e.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId);
+            e.HasIndex(x => new { x.OrgId, x.ProductCodeRoot });
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
         b.Entity<AttributeDef>(e =>

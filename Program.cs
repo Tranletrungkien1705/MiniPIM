@@ -96,6 +96,24 @@ app.MapGet("/api/sscc-types", async (string? q, IProductService svc) =>
     return Results.Ok(list.Where(s => s.Active).Select(s => new { s.Code, s.Name, s.NetworkId }));
 });
 
+// Phân cấp hàng hóa (Mst_Product: Root / Base / L2).
+app.MapGet("/api/product-hierarchy", async (string? q, IProductService svc) =>
+{
+    var roots = await svc.RootsAsync(q);
+    return Results.Ok(roots.Where(p => p.Status == ProductStatus.Active).Select(p => new
+    {
+        p.Code, p.Name, p.ProductCodeRoot, p.ProductCodeBase, level = p.Level.ToString()
+    }));
+});
+app.MapGet("/api/product-hierarchy/{code}/children", async (string code, IProductService svc) =>
+{
+    var children = await svc.ChildrenAsync(code);
+    return Results.Ok(children.Select(p => new
+    {
+        p.Code, p.Name, p.ProductCodeRoot, p.ProductCodeBase, level = p.Level.ToString()
+    }));
+});
+
 app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(dto.Name)) return Results.BadRequest(new { error = "Cần Name." });

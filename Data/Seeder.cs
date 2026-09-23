@@ -59,14 +59,31 @@ public static class Seeder
             int GId(string c) => groups.First(g => g.Code == c).Id;
             var p1 = new Product { Code = "AO-001", Name = "Áo sơ mi trắng basic", GroupId = GId("AO"), Uom = "cái", Barcode = "8930001", CostPrice = 120000, SalePrice = 250000,
                 Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 20, QtyMaxSt = 500, VatRateCode = "VAT10", Origin = "Việt Nam", QuyCach = "1 cái/túi",
+                ProductCodeRoot = "AO-001", ProductCodeBase = "AO-001",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Cotton 100%" }, new() { Name = "Màu", Value = "Trắng" } ] };
             var p2 = new Product { Code = "QUAN-001", Name = "Quần jeans slim", GroupId = GId("QUAN"), Uom = "cái", CostPrice = 200000, SalePrice = 450000,
                 Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 10, QtyMaxSt = 300, VatRateCode = "VAT10", Origin = "Việt Nam",
+                ProductCodeRoot = "QUAN-001", ProductCodeBase = "QUAN-001",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Denim" } ],
                 Bom = [ new() { ComponentCode = "VAI-DENIM", ComponentName = "Vải denim", Quantity = 1.2m, Uom = "m" }, new() { ComponentCode = "KHOA", ComponentName = "Khóa kéo", Quantity = 1, Uom = "cái" } ] };
             var p3 = new Product { Code = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000,
-                Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10", DTimeUsed = new DateTime(2024, 1, 1) };
+                Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10", DTimeUsed = new DateTime(2024, 1, 1),
+                ProductCodeRoot = "PK-001", ProductCodeBase = "PK-001" };
             db.Products.AddRange(p1, p2, p3);
+            await db.SaveChangesAsync();
+        }
+        // Phân cấp hàng hóa (Mst_Product: Root / Base / L2) — hàng gốc + hàng cơ sở + hàng cấp 2 mẫu.
+        if (!await db.Products.AnyAsync(p => p.Level == ProductLevel.Root))
+        {
+            var groups = await db.Groups.ToListAsync();
+            int GId(string c) => groups.First(g => g.Code == c).Id;
+            var root = new Product { Code = "AO-ROOT", Name = "Áo (gốc)", GroupId = GId("AO"), Uom = "cái", SalePrice = 0,
+                Level = ProductLevel.Root, ValConvert = 1, ProductCodeRoot = "AO-ROOT", ProductCodeBase = "AO-ROOT" };
+            var basePrd = new Product { Code = "AO-ROOT-SOMI", Name = "Áo sơ mi (cơ sở)", GroupId = GId("AO"), Uom = "cái", SalePrice = 0,
+                Level = ProductLevel.Base, ValConvert = 1, ProductCodeRoot = "AO-ROOT", ProductCodeBase = "AO-ROOT-SOMI" };
+            var l2Prd = new Product { Code = "AO-ROOT-SOMI-TRANG", Name = "Áo sơ mi trắng (cấp 2)", GroupId = GId("AO"), Uom = "cái", SalePrice = 250000,
+                Level = ProductLevel.L2, ValConvert = 1, ProductCodeRoot = "AO-ROOT", ProductCodeBase = "AO-ROOT-SOMI" };
+            db.Products.AddRange(root, basePrd, l2Prd);
             await db.SaveChangesAsync();
         }
         if (!await db.Brands.AnyAsync())
@@ -172,6 +189,9 @@ public static class Seeder
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"Gtin\" text NULL");
         // Vòng đời hàng hóa (Mst_Product_UpdateDtimeUsed): ngày ngừng sử dụng.
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"DTimeUsed\" timestamp NULL");
+        // Phân cấp hàng hóa (Mst_Product): mã gốc / mã cơ sở.
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductCodeRoot\" text NULL");
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductCodeBase\" text NULL");
         // Thuộc tính (Mst_Attribute): mã dùng chung network.
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"NetworkId\" text NULL");
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");

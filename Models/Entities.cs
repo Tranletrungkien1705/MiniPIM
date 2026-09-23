@@ -195,6 +195,9 @@ public class Product : IOrgOwned
     public string? SsccTypeCode { get; set; }                       // SSCCType — loại SSCC (Mst_SSCCType)
     public string? Gtin { get; set; }                               // GTIN — mã thương phẩm toàn cầu (phải là số)
     public DateTime? DTimeUsed { get; set; }                        // DTimeUsed — ngày hàng hóa bắt đầu được dùng trong nghiệp vụ
+    // --- Phân cấp hàng hóa (Mst_Product: ProductCodeRoot / ProductCodeBase) ---
+    public string? ProductCodeRoot { get; set; }                    // ProductCodeRoot — mã hàng gốc (Root) của cây phân cấp
+    public string? ProductCodeBase { get; set; }                    // ProductCodeBase — mã hàng cơ sở (Base) mà hàng này thuộc về
 
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 

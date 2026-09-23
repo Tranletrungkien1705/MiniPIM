@@ -573,6 +573,54 @@ public class MasterCheckController(IProductService svc) : Controller
     }
 }
 
+/// <summary>
+/// Phân cấp hàng hóa (Mst_Product: Root / Base / L2) — nguồn 2019.4.ProductCenter.
+/// Một hàng gốc (Root) chứa nhiều hàng cơ sở (Base); mỗi hàng cơ sở lại chứa nhiều
+/// hàng cấp 2 (L2). Điều hướng theo ProductCodeRoot/ProductCodeBase.
+/// </summary>
+public class ProductHierarchyController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.RootsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Groups = await svc.GroupsAsync();
+        ViewBag.Roots = await svc.RootsAsync(null);
+        var p = id.HasValue ? await svc.GetAsync(id.Value) : new Product { Level = ProductLevel.Root };
+        if (p == null) return NotFound();
+        return View(p);
+    }
+
+    /// <summary>Chi tiết một hàng gốc: danh sách hàng cơ sở và hàng cấp 2 (Mst_Product_Get_Children / Get_Level2).</summary>
+    public async Task<IActionResult> Tree(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return RedirectToAction(nameof(Index));
+        ViewBag.Root = await svc.GetByCodeAsync(code);
+        if (ViewBag.Root == null) return NotFound();
+        ViewBag.RootCode = code;
+        return View(await svc.ChildrenAsync(code));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, int? groupId, string uom,
+        string? barcode, decimal costPrice, decimal salePrice, string? description,
+        ProductStatus status, string? productCodeRoot, string? productCodeBase)
+    {
+        var p = new Product { Id = id, Code = code ?? "", Name = name ?? "", GroupId = groupId,
+            Uom = string.IsNullOrWhiteSpace(uom) ? "cái" : uom, Barcode = barcode, CostPrice = costPrice,
+            SalePrice = salePrice, Description = description, Status = status,
+            ProductCodeRoot = productCodeRoot, ProductCodeBase = productCodeBase };
+        var err = await svc.SaveProductHierarchyAsync(p);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu hàng hóa phân cấp.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

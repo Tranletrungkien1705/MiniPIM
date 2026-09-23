@@ -100,6 +100,12 @@ public interface IProductService
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
     Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
     Task<List<MasterIssue>> AuditMasterAsync();
+
+    // --- Phân cấp hàng hóa (Mst_Product: ProductCodeRoot / ProductCodeBase / ProductLevelSys) ---
+    Task<List<Product>> RootsAsync(string? q);
+    Task<List<Product>> ChildrenAsync(string rootCode);
+    Task<List<Product>> Level2Async(string rootCode);
+    Task<string?> SaveProductHierarchyAsync(Product p);
 }
 
 /// <summary>Một vi phạm quy tắc master data của Hàng hóa (dùng cho màn Kiểm tra Master Data).</summary>
@@ -1210,5 +1216,101 @@ public class ProductService(AppDbContext db) : IProductService
             }
         }
         return issues;
+    }
+
+    // --- Phân cấp hàng hóa (Mst_Product: ProductCodeRoot / ProductCodeBase / ProductLevelSys) ---
+
+    /// <summary>
+    /// Danh sách hàng hóa gốc (Root) — nghiệp vụ ProductCenter (Mst_Product_Get với
+    /// ProductLevelSys = ROOTPRD): hàng hóa có ProductCodeRoot = chính nó.
+    /// </summary>
+    public async Task<List<Product>> RootsAsync(string? q)
+    {
+        var query = db.Products.Include(p => p.Group).Where(p => p.Level == ProductLevel.Root);
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(p => p.Code.Contains(q) || p.Name.Contains(q));
+        return await query.OrderBy(p => p.Code).ToListAsync();
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_Get_Children): các hàng hóa con của một hàng gốc —
+    /// ProductCodeRoot = mã hàng gốc và ProductCode != mã hàng gốc.
+    /// </summary>
+    public async Task<List<Product>> ChildrenAsync(string rootCode)
+    {
+        if (string.IsNullOrWhiteSpace(rootCode)) return [];
+        return await db.Products.Include(p => p.Group)
+            .Where(p => p.ProductCodeRoot == rootCode && p.Code != rootCode)
+            .OrderBy(p => p.Code).ToListAsync();
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_Get_Level2): các hàng hóa cấp 2 (L2PRD) của một
+    /// hàng gốc — ProductCodeRoot = mã hàng gốc và ProductLevelSys = L2PRD.
+    /// </summary>
+    public async Task<List<Product>> Level2Async(string rootCode)
+    {
+        if (string.IsNullOrWhiteSpace(rootCode)) return [];
+        return await db.Products.Include(p => p.Group)
+            .Where(p => p.ProductCodeRoot == rootCode && p.Level == ProductLevel.L2)
+            .OrderBy(p => p.Code).ToListAsync();
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CreateX — phần phân cấp): gán ProductCodeRoot /
+    /// ProductCodeBase và suy ra cấp hàng hóa (ProductLevelSys):
+    ///  - ProductCodeBase rỗng → lấy bằng mã hàng; ProductCodeRoot rỗng → lấy bằng mã hàng;
+    ///  - mã hàng = Base = Root → cấp Gốc (ROOTPRD);
+    ///  - mã hàng = Base nhưng Root khác → cấp Cơ sở (BASEPRD);
+    ///  - còn lại → cấp 2 (L2PRD).
+    /// Hàng Gốc/Cơ sở luôn có hệ số quy đổi ValConvert = 1.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveProductHierarchyAsync(Product p)
+    {
+        if (string.IsNullOrWhiteSpace(p.Code)) return "Mã Hàng hóa không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(p.Name)) return "Tên Hàng hóa không hợp lệ.";
+        p.Code = p.Code.Trim(); p.Name = p.Name.Trim();
+
+        var dupCode = await db.Products.AnyAsync(x => x.Code == p.Code && x.Id != p.Id);
+        if (dupCode) return $"Mã Hàng hóa '{p.Code}' đã tồn tại.";
+
+        // Mst_Product_CreateX: Base/Root rỗng thì lấy bằng mã hàng.
+        var baseCode = string.IsNullOrWhiteSpace(p.ProductCodeBase) ? p.Code : p.ProductCodeBase!.Trim();
+        var rootCode = string.IsNullOrWhiteSpace(p.ProductCodeRoot) ? p.Code : p.ProductCodeRoot!.Trim();
+
+        // Hàng gốc/cơ sở phải tồn tại nếu khác chính nó.
+        if (rootCode != p.Code && !await db.Products.AnyAsync(x => x.Code == rootCode))
+            return $"Hàng hóa gốc '{rootCode}' không tồn tại.";
+        if (baseCode != p.Code && !await db.Products.AnyAsync(x => x.Code == baseCode))
+            return $"Hàng hóa cơ sở '{baseCode}' không tồn tại.";
+
+        // Suy ra cấp hàng hóa (ProductLevelSys).
+        ProductLevel level;
+        if (p.Code == baseCode && p.Code == rootCode) level = ProductLevel.Root;
+        else if (p.Code == baseCode) level = ProductLevel.Base;
+        else level = ProductLevel.L2;
+
+        Product target;
+        if (p.Id > 0)
+        {
+            target = await db.Products.FirstOrDefaultAsync(x => x.Id == p.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Hàng hóa.");
+            target.Name = p.Name; target.GroupId = p.GroupId; target.Uom = p.Uom; target.Barcode = p.Barcode;
+            target.CostPrice = p.CostPrice; target.SalePrice = p.SalePrice; target.Description = p.Description;
+            target.Status = p.Status; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = p;
+            db.Products.Add(target);
+        }
+        target.ProductCodeRoot = rootCode;
+        target.ProductCodeBase = baseCode;
+        target.Level = level;
+        // Mst_Product_CreateX: hàng Gốc/Cơ sở luôn có hệ số quy đổi = 1.
+        if (level == ProductLevel.Root || level == ProductLevel.Base) target.ValConvert = 1;
+        await db.SaveChangesAsync();
+        return null;
     }
 }

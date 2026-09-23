@@ -1,0 +1,75 @@
+@model Product
+@{
+    ViewData["Title"] = Model.Id > 0 ? $"Sửa hàng hóa {Model.Code}" : "Thêm hàng hóa phân cấp";
+    var groups = (List<ProductGroup>)ViewBag.Groups;
+    var roots = (List<Product>)ViewBag.Roots;
+}
+<div class="row g-3">
+    <div class="col-lg-7"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">@ViewData["Title"]</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label small text-muted">Mã hàng *</label>
+                    <input name="code" value="@Model.Code" class="form-control" required @(Model.Id > 0 ? "readonly" : "") /></div>
+                <div class="col-md-8"><label class="form-label small text-muted">Tên *</label>
+                    <input name="name" value="@Model.Name" class="form-control" required /></div>
+                <div class="col-md-5"><label class="form-label small text-muted">Nhóm</label>
+                    <select name="groupId" class="form-select"><option value="">—</option>
+                        @foreach (var g in groups) { <option value="@g.Id" selected="@(Model.GroupId==g.Id)">@g.Name</option> }
+                    </select></div>
+                <div class="col-md-3"><label class="form-label small text-muted">ĐVT</label>
+                    <input name="uom" value="@(string.IsNullOrWhiteSpace(Model.Uom) ? "cái" : Model.Uom)" class="form-control" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Barcode</label>
+                    <input name="barcode" value="@Model.Barcode" class="form-control" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Giá vốn</label>
+                    <input name="costPrice" type="number" step="1000" value="@Model.CostPrice" class="form-control" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Giá bán</label>
+                    <input name="salePrice" type="number" step="1000" value="@Model.SalePrice" class="form-control" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Trạng thái</label>
+                    <select name="status" class="form-select">
+                        <option value="0" selected="@(Model.Status==ProductStatus.Active)">Đang bán</option>
+                        <option value="1" selected="@(Model.Status==ProductStatus.Inactive)">Ngừng</option>
+                    </select></div>
+                <div class="col-12"><label class="form-label small text-muted">Mô tả</label>
+                    <textarea name="description" class="form-control" rows="2">@Model.Description</textarea></div>
+            </div>
+            <hr class="my-3" />
+            <h6 class="fw-bold mb-3">Phân cấp (Root / Base / L2)</h6>
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label small text-muted">Mã hàng gốc (Root)</label>
+                    <input name="productCodeRoot" value="@Model.ProductCodeRoot" class="form-control" list="rootList" placeholder="để trống = chính nó (Gốc)" />
+                    <datalist id="rootList">
+                        @foreach (var r in roots) { <option value="@r.Code">@r.Name</option> }
+                    </datalist>
+                </div>
+                <div class="col-md-6"><label class="form-label small text-muted">Mã hàng cơ sở (Base)</label>
+                    <input name="productCodeBase" value="@Model.ProductCodeBase" class="form-control" placeholder="để trống = chính nó" />
+                </div>
+            </div>
+            <div class="alert alert-info mt-3 mb-0 py-2 small">
+                <i class="bi bi-info-circle me-1"></i>
+                Cấp hàng hóa được suy ra tự động: mã = Base = Root → <b>Gốc</b>; mã = Base, Root khác → <b>Cơ sở</b>; còn lại → <b>Cấp 2</b>.
+                Hàng Gốc/Cơ sở luôn có hệ số quy đổi = 1.
+            </div>
+            <div class="mt-3">
+                <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu</button>
+                <a href="/ProductHierarchy" class="btn btn-outline-secondary">Về danh sách</a>
+            </div>
+        </form>
+    </div></div></div>
+    <div class="col-lg-5"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Cấp hàng hóa hiện tại</h6>
+        @if (Model.Id > 0)
+        {
+            <p class="mb-1">Cấp: <span class="badge bg-primary">@Model.Level</span></p>
+            <p class="mb-1 small text-muted">Mã gốc: <b>@(Model.ProductCodeRoot ?? "—")</b></p>
+            <p class="mb-0 small text-muted">Mã cơ sở: <b>@(Model.ProductCodeBase ?? "—")</b></p>
+        }
+        else
+        {
+            <p class="text-muted small mb-0">Lưu hàng hóa để xem cấp phân cấp.</p>
+        }
+    </div></div></div>
+</div>

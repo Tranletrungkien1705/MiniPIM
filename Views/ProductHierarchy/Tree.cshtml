@@ -1,0 +1,56 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Cây phân cấp hàng hóa";
+    var root = (Product?)ViewBag.Root;
+    var rootCode = (string?)ViewBag.RootCode;
+    var bases = Model.Where(p => p.Level == ProductLevel.Base).ToList();
+    var l2 = Model.Where(p => p.Level == ProductLevel.L2).ToList();
+}
+<div class="card mb-3"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="fw-bold mb-0"><i class="bi bi-diagram-2 me-1"></i>@root?.Code — @root?.Name</h6>
+            <div class="text-muted small">Hàng gốc (Root) · @bases.Count hàng cơ sở · @l2.Count hàng cấp 2</div>
+        </div>
+        <a href="/ProductHierarchy" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Danh sách gốc</a>
+    </div>
+</div></div>
+
+<div class="row g-3">
+    <div class="col-lg-6"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Hàng cơ sở (Base)</h6>
+        <table class="table table-sm table-hover align-middle">
+            <thead><tr><th>Mã</th><th>Tên</th><th>ĐVT</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var b in bases)
+            {
+                <tr>
+                    <td class="fw-semibold">@b.Code</td>
+                    <td>@b.Name</td>
+                    <td>@b.Uom</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/ProductHierarchy/Edit/@b.Id"><i class="bi bi-pencil"></i></a></td>
+                </tr>
+            }
+            @if (bases.Count == 0) { <tr><td colspan="4" class="text-center text-muted py-3">Chưa có hàng cơ sở.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-6"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Hàng cấp 2 (L2)</h6>
+        <table class="table table-sm table-hover align-middle">
+            <thead><tr><th>Mã</th><th>Tên</th><th>Mã cơ sở</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var x in l2)
+            {
+                <tr>
+                    <td class="fw-semibold">@x.Code</td>
+                    <td>@x.Name</td>
+                    <td class="small text-muted">@(x.ProductCodeBase ?? "—")</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="/ProductHierarchy/Edit/@x.Id"><i class="bi bi-pencil"></i></a></td>
+                </tr>
+            }
+            @if (l2.Count == 0) { <tr><td colspan="4" class="text-center text-muted py-3">Chưa có hàng cấp 2.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+</div>

@@ -1,0 +1,38 @@
+@model List<Product>
+@{ ViewData["Title"] = "Phân cấp hàng hóa"; var q = (string?)ViewBag.Q; }
+<div class="card"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h6 class="fw-bold mb-0">Hàng hóa gốc (Root)</h6>
+            <div class="text-muted small">Mỗi hàng gốc chứa nhiều hàng cơ sở (Base), mỗi hàng cơ sở chứa nhiều hàng cấp 2 (L2).</div>
+        </div>
+        <div class="d-flex gap-2">
+            <form class="d-flex" method="get">
+                <input name="q" value="@q" class="form-control form-control-sm me-2" placeholder="Tìm mã / tên..." />
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            </form>
+            <a href="/ProductHierarchy/Edit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm</a>
+        </div>
+    </div>
+    <table class="table table-hover align-middle">
+        <thead><tr><th>Mã gốc</th><th>Tên</th><th>Nhóm</th><th>ĐVT</th><th class="text-end">Giá bán</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var p in Model)
+        {
+            <tr>
+                <td class="fw-semibold">@p.Code</td>
+                <td>@p.Name</td>
+                <td class="small text-muted">@(p.Group?.Name ?? "—")</td>
+                <td>@p.Uom</td>
+                <td class="text-end">@p.SalePrice.ToString("N0")</td>
+                <td>@if (p.Status == ProductStatus.Active) { <span class="badge bg-success">Bán</span> } else { <span class="badge bg-secondary">Ngừng</span> }</td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary" href="/ProductHierarchy/Tree?code=@p.Code"><i class="bi bi-diagram-2 me-1"></i>Cây</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="/ProductHierarchy/Edit/@p.Id"><i class="bi bi-pencil"></i></a>
+                </td>
+            </tr>
+        }
+        @if (Model.Count == 0) { <tr><td colspan="7" class="text-center text-muted py-4">Chưa có hàng hóa gốc.</td></tr> }
+        </tbody>
+    </table>
+</div></div>

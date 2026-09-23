@@ -24,13 +24,26 @@ public class AttributeDef : IOrgOwned
     public bool Active { get; set; } = true;
 }
 
-/// <summary>Nhóm sản phẩm (phân cấp 1 tầng cho demo).</summary>
+/// <summary>
+/// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
+/// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
+/// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).
+/// </summary>
 public class ProductGroup : IOrgOwned
 {
     public int Id { get; set; }
     public Guid OrgId { get; set; }
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
+
+    // --- Phân cấp & đường dẫn (Mst_ProductGroup) ---
+    public string? ParentCode { get; set; }        // ProductGrpCodeParent
+    public string BUCode { get; set; } = "";      // ProductGrpBUCode — đường dẫn mã, vd "ALL.AO.SOMI"
+    public string BUPattern { get; set; } = "";    // ProductGrpBUPattern — dùng LIKE để lấy cả cây con
+    public int Level { get; set; }                 // ProductGrpLevel — 0 = gốc
+    public bool FlagFG { get; set; }               // FlagFG — nhóm thành phẩm
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
 
 /// <summary>Sản phẩm master (PIM) — nguồn dữ liệu chuẩn cấp cho DMS/WMS/Stamp.</summary>

@@ -57,7 +57,29 @@ public class ProductController(IProductService svc) : Controller
 
 public class GroupController(IProductService svc) : Controller
 {
-    public async Task<IActionResult> Index() => View(await svc.GroupsAsync());
+    public async Task<IActionResult> Index()
+    {
+        ViewBag.Groups = await svc.GroupsAsync();
+        return View(await svc.GroupsAsync());
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Groups = await svc.GroupsAsync();
+        var g = id.HasValue ? await svc.GetGroupAsync(id.Value) : new ProductGroup();
+        if (g == null) return NotFound();
+        return View(g);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? parentCode, bool flagFG, bool active)
+    {
+        var g = new ProductGroup { Id = id, Code = code ?? "", Name = name ?? "", ParentCode = parentCode, FlagFG = flagFG, Active = active };
+        var err = await svc.SaveGroupAsync(g);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu nhóm hàng.";
+        return RedirectToAction(nameof(Index));
+    }
 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string name, string? code)
@@ -65,6 +87,14 @@ public class GroupController(IProductService svc) : Controller
         if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên nhóm."; return RedirectToAction(nameof(Index)); }
         await svc.CreateGroupAsync(new ProductGroup { Name = name.Trim(), Code = code ?? "" });
         TempData["Success"] = "Đã tạo nhóm.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteGroupAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa nhóm hàng.";
         return RedirectToAction(nameof(Index));
     }
 }

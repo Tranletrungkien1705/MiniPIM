@@ -18,9 +18,10 @@ public static class Seeder
         if (!await db.Groups.AnyAsync())
         {
             db.Groups.AddRange(
-                new ProductGroup { Code = "AO", Name = "Áo" },
-                new ProductGroup { Code = "QUAN", Name = "Quần" },
-                new ProductGroup { Code = "PK", Name = "Phụ kiện" });
+                new ProductGroup { Code = "AO", Name = "Áo", BUCode = "AO", BUPattern = "AO%", Level = 0, FlagFG = true },
+                new ProductGroup { Code = "AO-SOMI", Name = "Áo sơ mi", ParentCode = "AO", BUCode = "AO.AO-SOMI", BUPattern = "AO.AO-SOMI%", Level = 1, FlagFG = true },
+                new ProductGroup { Code = "QUAN", Name = "Quần", BUCode = "QUAN", BUPattern = "QUAN%", Level = 0, FlagFG = true },
+                new ProductGroup { Code = "PK", Name = "Phụ kiện", BUCode = "PK", BUPattern = "PK%", Level = 0, FlagFG = false });
             await db.SaveChangesAsync();
         }
         if (!await db.AttributeDefs.AnyAsync())
@@ -72,6 +73,14 @@ public static class Seeder
             "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Orgs_ApiKey\" ON minipim.\"Orgs\" (\"ApiKey\")",
         };
         foreach (var t in tables) sql.Add($"ALTER TABLE minipim.\"{t}\" ADD COLUMN IF NOT EXISTS \"OrgId\" uuid NOT NULL DEFAULT '{def}'");
+        // Nhóm hàng phân cấp (Mst_ProductGroup): đường dẫn BU + cờ.
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"ParentCode\" text NULL");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"BUCode\" text NOT NULL DEFAULT ''");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"BUPattern\" text NOT NULL DEFAULT ''");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"Level\" integer NOT NULL DEFAULT 0");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"FlagFG\" boolean NOT NULL DEFAULT false");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"Active\" boolean NOT NULL DEFAULT true");
+        sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");
         foreach (var s in sql) try { await db.Database.ExecuteSqlRawAsync(s); } catch { }
     }
 }

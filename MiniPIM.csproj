@@ -10,4 +10,9 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.0" />
   </ItemGroup>
+  <!-- Các file _*.cs là bản dump nguồn ProductCenter dùng để đọc, không thuộc app. -->
+  <ItemGroup>
+    <Compile Remove="_*.cs" />
+    <None Include="_*.cs" />
+  </ItemGroup>
 </Project>

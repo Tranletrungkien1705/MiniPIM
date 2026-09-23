@@ -1,22 +1,48 @@
 @model List<ProductGroup>
-@{ ViewData["Title"] = "Nhóm sản phẩm"; }
+@{ ViewData["Title"] = "Nhóm hàng"; }
 <div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Cây nhóm hàng (phân cấp)</h6>
+            <a class="btn btn-sm btn-primary" href="/Group/Edit"><i class="bi bi-plus-lg me-1"></i>Thêm nhóm</a>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Mã</th><th>Tên nhóm</th><th>Đường dẫn (BU)</th><th>Cấp</th><th>Loại</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var g in Model.OrderBy(x => x.BUCode))
+            {
+                <tr>
+                    <td class="fw-semibold">@g.Code</td>
+                    <td style="padding-left:@(12 + g.Level * 20)px">
+                        @if (g.Level > 0) { <i class="bi bi-arrow-return-right text-muted me-1"></i> }
+                        @g.Name
+                    </td>
+                    <td><code class="small">@g.BUCode</code></td>
+                    <td><span class="badge bg-light text-dark">@g.Level</span></td>
+                    <td>@if (g.FlagFG) { <span class="badge bg-info text-dark">Thành phẩm</span> } else { <span class="badge bg-light text-muted">Khác</span> }</td>
+                    <td>@if (g.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/Group/Edit/@g.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa nhóm @g.Name?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@g.Id" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="7" class="text-center text-muted py-4">Chưa có nhóm hàng.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
     <div class="col-lg-4"><div class="card"><div class="card-body">
-        <h6 class="fw-bold mb-3">Thêm nhóm</h6>
+        <h6 class="fw-bold mb-3">Thêm nhanh</h6>
         <form asp-action="Create" method="post">
             @Html.AntiForgeryToken()
             <div class="mb-2"><input name="name" class="form-control" placeholder="Tên nhóm *" required /></div>
             <div class="mb-3"><input name="code" class="form-control" placeholder="Mã (tự sinh nếu trống)" /></div>
             <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Tạo nhóm</button>
         </form>
-    </div></div></div>
-    <div class="col-lg-8"><div class="card"><div class="card-body">
-        <table class="table table-hover align-middle">
-            <thead><tr><th>Mã</th><th>Tên nhóm</th></tr></thead>
-            <tbody>
-            @foreach (var g in Model) { <tr><td class="fw-semibold">@g.Code</td><td>@g.Name</td></tr> }
-            @if (Model.Count == 0) { <tr><td colspan="2" class="text-center text-muted py-4">Chưa có nhóm.</td></tr> }
-            </tbody>
-        </table>
+        <p class="text-muted small mt-3 mb-0">Dùng <b>Thêm nhóm</b> để chọn nhóm cha và tính đường dẫn phân cấp.</p>
     </div></div></div>
 </div>

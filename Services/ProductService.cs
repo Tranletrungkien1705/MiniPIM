@@ -15,6 +15,11 @@ public interface IProductService
     Task<int> SaveProductAsync(Product p, List<ProductAttribute> attrs, List<BomLine> bom);
     Task<string?> ValidateBomAsync(List<BomLine> bom);
     Task<int> CreateGroupAsync(ProductGroup g);
+
+    // --- Nhóm hàng phân cấp (Mst_ProductGroup) ---
+    Task<ProductGroup?> GetGroupAsync(int id);
+    Task<string?> SaveGroupAsync(ProductGroup g);
+    Task<string?> DeleteGroupAsync(int id);
     Task<List<AttributeDef>> AttributeDefsAsync();
     Task<int> CreateAttributeDefAsync(AttributeDef a);
     Task<PimDash> DashboardAsync();
@@ -88,6 +93,102 @@ public class ProductService(AppDbContext db) : IProductService
         db.Groups.Add(g);
         await db.SaveChangesAsync();
         return g.Id;
+    }
+
+    // --- Nhóm hàng phân cấp (Mst_ProductGroup) ---
+    public Task<ProductGroup?> GetGroupAsync(int id) =>
+        db.Groups.FirstOrDefaultAsync(g => g.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductGroup_CreateX / UpdateX):
+    /// mã & tên nhóm bắt buộc, mã/tên không trùng, nhóm cha phải tồn tại.
+    /// Sau khi lưu, tính lại đường dẫn BU (Mst_ProductGroup_UpdBU).
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveGroupAsync(ProductGroup g)
+    {
+        if (string.IsNullOrWhiteSpace(g.Code)) return "Mã Nhóm hàng không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(g.Name)) return "Tên Nhóm hàng không hợp lệ.";
+        g.Code = g.Code.Trim(); g.Name = g.Name.Trim();
+
+        var dupCode = await db.Groups.AnyAsync(x => x.Code == g.Code && x.Id != g.Id);
+        if (dupCode) return $"Nhóm hàng '{g.Code}' đã tồn tại.";
+        var dupName = await db.Groups.AnyAsync(x => x.Name == g.Name && x.Id != g.Id);
+        if (dupName) return $"Tên nhóm hàng '{g.Name}' đã tồn tại.";
+
+        if (!string.IsNullOrWhiteSpace(g.ParentCode))
+        {
+            var parent = await db.Groups.FirstOrDefaultAsync(x => x.Code == g.ParentCode);
+            if (parent == null) return $"Nhóm cha '{g.ParentCode}' không tồn tại.";
+            if (g.Id > 0 && parent.Id == g.Id) return "Nhóm không thể là cha của chính nó.";
+        }
+
+        ProductGroup target;
+        if (g.Id > 0)
+        {
+            target = await db.Groups.FirstAsync(x => x.Id == g.Id);
+            target.Name = g.Name; target.ParentCode = g.ParentCode;
+            target.FlagFG = g.FlagFG; target.Active = g.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = g;
+            db.Groups.Add(target);
+        }
+        await db.SaveChangesAsync();
+        await RecomputeGroupPathsAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductGroup_DeleteX): không cho xóa nhóm
+    /// nếu còn hàng hóa thuộc nhóm hoặc còn nhóm con.
+    /// </summary>
+    public async Task<string?> DeleteGroupAsync(int id)
+    {
+        var g = await db.Groups.FirstOrDefaultAsync(x => x.Id == id);
+        if (g == null) return "Không tìm thấy thông tin Nhóm hàng.";
+        if (await db.Products.AnyAsync(p => p.GroupId == id))
+            return $"Đã có Hàng hóa trong Nhóm hàng '{g.Name}'.";
+        if (await db.Groups.AnyAsync(x => x.ParentCode == g.Code))
+            return $"Nhóm hàng '{g.Name}' còn nhóm con, không thể xóa.";
+        db.Groups.Remove(g);
+        await db.SaveChangesAsync();
+        await RecomputeGroupPathsAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Port Mst_ProductGroup_UpdBU: duyệt cây cha/con và gán lại BUCode/BUPattern/Level.
+    /// Gốc (không có cha) có BUCode = mã, Level = 0; con = "cha.con", Level = cha.Level + 1.
+    /// </summary>
+    private async Task RecomputeGroupPathsAsync()
+    {
+        var groups = await db.Groups.ToListAsync();
+        var byCode = groups.ToDictionary(x => x.Code, StringComparer.OrdinalIgnoreCase);
+
+        string Path(ProductGroup g, int depth)
+        {
+            if (depth > 32) return g.Code; // chống vòng lặp
+            if (string.IsNullOrWhiteSpace(g.ParentCode) || !byCode.TryGetValue(g.ParentCode, out var parent))
+                return g.Code;
+            return Path(parent, depth + 1) + "." + g.Code;
+        }
+        int Level(ProductGroup g, int depth)
+        {
+            if (depth > 32) return depth;
+            if (string.IsNullOrWhiteSpace(g.ParentCode) || !byCode.TryGetValue(g.ParentCode, out var parent))
+                return 0;
+            return Level(parent, depth + 1) + 1;
+        }
+
+        foreach (var g in groups)
+        {
+            g.BUCode = Path(g, 0);
+            g.BUPattern = g.BUCode + "%";
+            g.Level = Level(g, 0);
+        }
+        await db.SaveChangesAsync();
     }
 
     public Task<List<AttributeDef>> AttributeDefsAsync() => db.AttributeDefs.OrderBy(a => a.Name).ToListAsync();

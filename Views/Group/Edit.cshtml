@@ -1,0 +1,41 @@
+@model ProductGroup
+@{
+    ViewData["Title"] = Model.Id > 0 ? $"Nhóm hàng {Model.Code}" : "Thêm nhóm hàng";
+    var groups = (List<ProductGroup>)ViewBag.Groups;
+}
+<form asp-action="Save" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+    <div class="row g-3">
+        <div class="col-lg-8"><div class="card"><div class="card-body">
+            <h6 class="fw-bold mb-3">Thông tin nhóm hàng</h6>
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label small text-muted">Mã nhóm *</label><input name="code" value="@Model.Code" class="form-control" placeholder="vd AO" required /></div>
+                <div class="col-md-8"><label class="form-label small text-muted">Tên nhóm *</label><input name="name" value="@Model.Name" class="form-control" required /></div>
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">Nhóm cha</label>
+                    <select name="parentCode" class="form-select">
+                        <option value="">— (nhóm gốc) —</option>
+                        @foreach (var g in groups.Where(x => x.Id != Model.Id).OrderBy(x => x.BUCode))
+                        {
+                            <option value="@g.Code" selected="@(g.Code == Model.ParentCode)">@g.BUCode — @g.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div></div></div>
+        <div class="col-lg-4"><div class="card"><div class="card-body">
+            <h6 class="fw-bold mb-3">Thuộc tính</h6>
+            <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="flagFG" value="true" id="flagFG" checked="@Model.FlagFG" /><label class="form-check-label" for="flagFG">Nhóm thành phẩm (FG)</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="active" value="true" id="active" checked="@Model.Active" /><label class="form-check-label" for="active">Đang dùng</label></div>
+            @if (Model.Id > 0)
+            {
+                <hr />
+                <div class="small text-muted">Đường dẫn BU</div>
+                <code>@Model.BUCode</code>
+                <div class="small text-muted mt-2">Cấp: <b>@Model.Level</b></div>
+            }
+        </div></div></div>
+    </div>
+    <div class="mt-3"><button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Lưu</button> <a href="/Group" class="btn btn-outline-secondary">Về danh sách</a></div>
+</form>

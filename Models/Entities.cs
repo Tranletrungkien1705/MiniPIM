@@ -266,3 +266,27 @@ public class SpecPrice : IOrgOwned
 
     public Spec Spec { get; set; } = null!;
 }
+/// <summary>
+/// Đơn vị tính theo quy cách (Mst_SpecUnit của ProductCenter) — khóa nghiệp vụ
+/// (SpecCode, UnitCode). Mỗi quy cách có nhiều ĐVT bán được, kèm hệ số quy đổi
+/// (Qty) và kích thước/khối lượng đóng gói (Length/Width/Height/Volume/Weight)
+/// để tính vận chuyển. StandardUnitCode là ĐVT chuẩn quy đổi về.
+/// </summary>
+public class SpecUnit : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string SpecCode { get; set; } = "";        // SpecCode — quy cách (Mst_Spec)
+    public string UnitCode { get; set; } = "";        // UnitCode — ĐVT (Mst_Unit)
+    public string? StandardUnitCode { get; set; }      // StandardUnitCode — ĐVT chuẩn quy đổi về
+    public string? Description { get; set; }           // SpecUnitDesc — mô tả
+    public decimal Qty { get; set; } = 1;              // Qty — hệ số quy đổi
+    public decimal? Length { get; set; }               // Length — dài
+    public decimal? Width { get; set; }                // Width — rộng
+    public decimal? Height { get; set; }               // Height — cao
+    public decimal? Volume { get; set; }               // Volume — thể tích
+    public decimal? Weight { get; set; }               // Weight — khối lượng
+    public string? Remark { get; set; }                // Remark — ghi chú
+    public bool Active { get; set; } = true;           // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

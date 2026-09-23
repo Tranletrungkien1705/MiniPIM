@@ -378,6 +378,49 @@ public class CurrencyExController(IProductService svc) : Controller
     }
 }
 
+public class SpecUnitController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? specCode)
+    {
+        ViewBag.SpecCode = specCode;
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        ViewBag.Units = await svc.UnitsAsync(null);
+        return View(await svc.SpecUnitsAsync(specCode));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        ViewBag.Units = await svc.UnitsAsync(null);
+        var u = id.HasValue ? await svc.GetSpecUnitAsync(id.Value) : new SpecUnit();
+        if (u == null) return NotFound();
+        return View(u);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string specCode, string unitCode, string? standardUnitCode,
+        string? description, decimal qty, decimal? length, decimal? width, decimal? height, decimal? volume,
+        decimal? weight, string? remark, bool active)
+    {
+        var u = new SpecUnit { Id = id, SpecCode = specCode ?? "", UnitCode = unitCode ?? "",
+            StandardUnitCode = standardUnitCode, Description = description, Qty = qty <= 0 ? 1 : qty,
+            Length = length, Width = width, Height = height, Volume = volume, Weight = weight,
+            Remark = remark, Active = active };
+        var err = await svc.SaveSpecUnitAsync(u);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu đơn vị tính theo quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? specCode)
+    {
+        var err = await svc.DeleteSpecUnitAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa đơn vị tính theo quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

@@ -1,0 +1,80 @@
+@model List<SpecUnit>
+@{
+    ViewData["Title"] = "Đơn vị tính theo quy cách";
+    var specs = ViewBag.Specs as List<Spec>;
+    var units = ViewBag.Units as List<Unit>;
+    string specCode = ViewBag.SpecCode as string ?? "";
+}
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Đơn vị tính theo quy cách</h6>
+            <form class="d-flex" method="get">
+                <select name="specCode" class="form-select form-select-sm me-2" onchange="this.form.submit()">
+                    <option value="">— Tất cả quy cách —</option>
+                    @foreach (var s in specs ?? new())
+                    {
+                        <option value="@s.Code" selected="@(s.Code == specCode)">@s.Code — @s.Name</option>
+                    }
+                </select>
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i></button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Quy cách</th><th>ĐVT</th><th>ĐVT chuẩn</th><th class="text-end">Hệ số</th><th>D×R×C</th><th class="text-end">KL</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@u.SpecCode</td>
+                    <td>@u.UnitCode</td>
+                    <td class="text-muted small">@u.StandardUnitCode</td>
+                    <td class="text-end">@u.Qty</td>
+                    <td class="text-muted small">@(u.Length.HasValue || u.Width.HasValue || u.Height.HasValue ? $"{u.Length}×{u.Width}×{u.Height}" : "")</td>
+                    <td class="text-end text-muted small">@u.Weight</td>
+                    <td>@if (u.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/SpecUnit/Edit/@u.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa đơn vị tính theo quy cách này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@u.Id" />
+                            <input type="hidden" name="specCode" value="@specCode" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="8" class="text-center text-muted py-4">Chưa có đơn vị tính theo quy cách.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm đơn vị tính theo quy cách</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2"><label class="form-label small text-muted">Quy cách *</label>
+                <select name="specCode" class="form-select" required>
+                    <option value="">— Chọn quy cách —</option>
+                    @foreach (var s in specs ?? new()) { <option value="@s.Code">@s.Code — @s.Name</option> }
+                </select>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Đơn vị tính *</label>
+                <select name="unitCode" class="form-select" required>
+                    <option value="">— Chọn ĐVT —</option>
+                    @foreach (var un in units ?? new()) { <option value="@un.CodeUser">@un.CodeUser — @un.Name</option> }
+                </select>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">ĐVT chuẩn</label>
+                <select name="standardUnitCode" class="form-select">
+                    <option value="">— (không) —</option>
+                    @foreach (var un in units ?? new()) { <option value="@un.CodeUser">@un.CodeUser — @un.Name</option> }
+                </select>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Hệ số quy đổi</label><input name="qty" type="number" step="0.001" value="1" class="form-control" /></div>
+            <div class="mb-3"><label class="form-label small text-muted">Ghi chú</label><input name="remark" class="form-control" /></div>
+            <input type="hidden" name="active" value="true" />
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+        </form>
+    </div></div></div>
+</div>

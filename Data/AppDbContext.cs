@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<Model> Models => Set<Model>();
     public DbSet<ProductType> ProductTypes => Set<ProductType>();
     public DbSet<CurrencyEx> CurrencyExes => Set<CurrencyEx>();
+    public DbSet<SpecUnit> SpecUnits => Set<SpecUnit>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -107,6 +108,17 @@ public class AppDbContext : DbContext
             e.Property(x => x.BuyRate).HasPrecision(18, 6);
             e.Property(x => x.SellRate).HasPrecision(18, 6);
             e.Property(x => x.InterEx).HasPrecision(18, 6);
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SpecUnit>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.SpecCode, x.UnitCode }).IsUnique();
+            e.Property(x => x.Qty).HasPrecision(18, 3);
+            e.Property(x => x.Length).HasPrecision(18, 3);
+            e.Property(x => x.Width).HasPrecision(18, 3);
+            e.Property(x => x.Height).HasPrecision(18, 3);
+            e.Property(x => x.Volume).HasPrecision(18, 3);
+            e.Property(x => x.Weight).HasPrecision(18, 3);
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

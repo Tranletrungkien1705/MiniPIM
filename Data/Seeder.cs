@@ -111,13 +111,21 @@ public static class Seeder
             db.Specs.AddRange(s1, s2);
             await db.SaveChangesAsync();
         }
+        if (!await db.SpecUnits.AnyAsync())
+        {
+            db.SpecUnits.AddRange(
+                new SpecUnit { SpecCode = "AO-001-DENIM-M", UnitCode = "CAI", StandardUnitCode = "CAI", Description = "Bán lẻ theo cái", Qty = 1, Weight = 0.25m },
+                new SpecUnit { SpecCode = "AO-001-DENIM-M", UnitCode = "THUNG", StandardUnitCode = "CAI", Description = "Thùng 20 cái", Qty = 20, Length = 60, Width = 40, Height = 30, Volume = 72000, Weight = 5.2m },
+                new SpecUnit { SpecCode = "QUAN-001-DENIM-32", UnitCode = "CAI", StandardUnitCode = "CAI", Description = "Bán lẻ theo cái", Qty = 1, Weight = 0.6m });
+            await db.SaveChangesAsync();
+        }
     }
 
     private static async Task MigratePostgresAsync(AppDbContext db)
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes", "SpecUnits" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

@@ -66,6 +66,12 @@ public interface IProductService
     Task<CurrencyEx?> GetCurrencyExAsync(int id);
     Task<string?> SaveCurrencyExAsync(CurrencyEx c);
     Task<string?> DeleteCurrencyExAsync(int id);
+
+    // --- Đơn vị tính theo quy cách (Mst_SpecUnit) ---
+    Task<List<SpecUnit>> SpecUnitsAsync(string? specCode);
+    Task<SpecUnit?> GetSpecUnitAsync(int id);
+    Task<string?> SaveSpecUnitAsync(SpecUnit u);
+    Task<string?> DeleteSpecUnitAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -667,6 +673,85 @@ public class ProductService(AppDbContext db) : IProductService
         var c = await db.CurrencyExes.FirstOrDefaultAsync(x => x.Id == id);
         if (c == null) return "Không tìm thấy thông tin Ngoại tệ.";
         db.CurrencyExes.Remove(c);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Đơn vị tính theo quy cách (Mst_SpecUnit) ---
+    public async Task<List<SpecUnit>> SpecUnitsAsync(string? specCode)
+    {
+        var query = db.SpecUnits.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(specCode)) query = query.Where(u => u.SpecCode == specCode);
+        return await query.OrderBy(u => u.SpecCode).ThenBy(u => u.UnitCode).ToListAsync();
+    }
+
+    public Task<SpecUnit?> GetSpecUnitAsync(int id) => db.SpecUnits.FirstOrDefaultAsync(u => u.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecUnit_Create / Mst_SpecUnit_Update / Mst_SpecUnit_CheckDB):
+    /// quy cách (SpecCode) và ĐVT (UnitCode) bắt buộc và phải tồn tại & đang dùng;
+    /// mỗi cặp (SpecCode, UnitCode) chỉ có 1 dòng; ĐVT chuẩn (StandardUnitCode) nếu có phải tồn tại;
+    /// hệ số quy đổi Qty không âm; khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSpecUnitAsync(SpecUnit u)
+    {
+        if (string.IsNullOrWhiteSpace(u.SpecCode)) return "Cần chọn quy cách.";
+        if (string.IsNullOrWhiteSpace(u.UnitCode)) return "Cần chọn đơn vị tính.";
+        u.SpecCode = u.SpecCode.Trim(); u.UnitCode = u.UnitCode.Trim();
+
+        // Mst_SpecUnit_Create: quy cách phải tồn tại & đang dùng (Mst_Spec_CheckDB).
+        var spec = await db.Specs.FirstOrDefaultAsync(s => s.Code == u.SpecCode);
+        if (spec == null) return $"Quy cách '{u.SpecCode}' không tồn tại.";
+        if (!spec.Active) return $"Quy cách '{u.SpecCode}' đã ngừng dùng.";
+
+        // Mst_SpecUnit_Create: ĐVT phải tồn tại & đang dùng (Mst_Unit_CheckDB).
+        var unit = await db.Units.FirstOrDefaultAsync(x => x.CodeUser == u.UnitCode || x.Code == u.UnitCode);
+        if (unit == null) return $"Đơn vị tính '{u.UnitCode}' không tồn tại.";
+        if (!unit.Active) return $"Đơn vị tính '{u.UnitCode}' đã ngừng dùng.";
+
+        // Mst_SpecUnit_Create: ĐVT chuẩn nếu có phải tồn tại & đang dùng.
+        if (!string.IsNullOrWhiteSpace(u.StandardUnitCode))
+        {
+            u.StandardUnitCode = u.StandardUnitCode.Trim();
+            var std = await db.Units.FirstOrDefaultAsync(x => x.CodeUser == u.StandardUnitCode || x.Code == u.StandardUnitCode);
+            if (std == null) return $"Đơn vị tính chuẩn '{u.StandardUnitCode}' không tồn tại.";
+            if (!std.Active) return $"Đơn vị tính chuẩn '{u.StandardUnitCode}' đã ngừng dùng.";
+        }
+
+        if (u.Qty < 0) return "Hệ số quy đổi không được âm.";
+
+        // Mst_SpecUnit_CheckDB: mỗi cặp (SpecCode, UnitCode) chỉ có 1 dòng.
+        if (u.Id == 0 && await db.SpecUnits.AnyAsync(x => x.SpecCode == u.SpecCode && x.UnitCode == u.UnitCode))
+            return $"Đã có đơn vị tính '{u.UnitCode}' cho quy cách '{u.SpecCode}'.";
+
+        SpecUnit target;
+        if (u.Id > 0)
+        {
+            target = await db.SpecUnits.FirstOrDefaultAsync(x => x.Id == u.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Đơn vị tính theo quy cách.");
+            target.StandardUnitCode = u.StandardUnitCode; target.Description = u.Description;
+            target.Qty = u.Qty; target.Length = u.Length; target.Width = u.Width; target.Height = u.Height;
+            target.Volume = u.Volume; target.Weight = u.Weight; target.Remark = u.Remark;
+            target.Active = u.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = u;
+            db.SpecUnits.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecUnit_Delete): đơn vị tính theo quy cách phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteSpecUnitAsync(int id)
+    {
+        var u = await db.SpecUnits.FirstOrDefaultAsync(x => x.Id == id);
+        if (u == null) return "Không tìm thấy thông tin Đơn vị tính theo quy cách.";
+        db.SpecUnits.Remove(u);
         await db.SaveChangesAsync();
         return null;
     }

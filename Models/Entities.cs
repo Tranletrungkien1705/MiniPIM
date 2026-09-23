@@ -357,3 +357,44 @@ public class SpecCustomField : IOrgOwned
     public bool Active { get; set; } = true;        // FlagActive
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+/// <summary>
+/// Ảnh của hàng hóa (Mst_ProductImages của ProductCenter) — một hàng hóa có nhiều ảnh,
+/// mỗi ảnh có thứ tự (Idx), đường dẫn (ProductImagePath), tên (ProductImageName),
+/// mô tả (ProductImageDesc) và cờ ảnh chính (FlagPrimaryImage). ProductCode là khóa
+/// nghiệp vụ trỏ tới Hàng hóa master (Mst_Product).
+/// </summary>
+public class ProductImage : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string ProductCode { get; set; } = "";  // ProductCode — hàng hóa (Mst_Product)
+    public int Idx { get; set; }                    // Idx — thứ tự hiển thị
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? ImagePath { get; set; }          // ProductImagePath — đường dẫn ảnh
+    public string? ImageName { get; set; }          // ProductImageName — tên ảnh
+    public string? ImageDesc { get; set; }          // ProductImageDesc — mô tả ảnh
+    public bool FlagPrimaryImage { get; set; }      // FlagPrimaryImage — ảnh chính
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// Tệp/tài liệu đính kèm của hàng hóa (Mst_ProductFiles của ProductCenter) — một hàng hóa
+/// có nhiều tệp (bản vẽ, hướng dẫn sử dụng, chứng từ), mỗi tệp có thứ tự (Idx), đường dẫn
+/// (ProductFilePath), tên (ProductFileName) và mô tả (ProductFileDesc). ProductCode là
+/// khóa nghiệp vụ trỏ tới Hàng hóa master (Mst_Product).
+/// </summary>
+public class ProductFile : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string ProductCode { get; set; } = "";  // ProductCode — hàng hóa (Mst_Product)
+    public int Idx { get; set; }                    // Idx — thứ tự hiển thị
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? FilePath { get; set; }           // ProductFilePath — đường dẫn tệp
+    public string? FileName { get; set; }           // ProductFileName — tên tệp
+    public string? FileDesc { get; set; }           // ProductFileDesc — mô tả tệp
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

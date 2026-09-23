@@ -92,6 +92,14 @@ public static class Seeder
                 new ProductType { Code = "SERVICE", Name = "Dịch vụ", Remark = "Hàng hóa không quản lý tồn kho" });
             await db.SaveChangesAsync();
         }
+        if (!await db.CurrencyExes.AnyAsync())
+        {
+            db.CurrencyExes.AddRange(
+                new CurrencyEx { Code = "VND", Name = "Việt Nam Đồng", BaseCurrencyCode = null, BuyRate = 1, SellRate = 1, InterEx = 1, Remark = "Đồng tiền gốc" },
+                new CurrencyEx { Code = "USD", Name = "Đô la Mỹ", BaseCurrencyCode = "VND", BuyRate = 24500, SellRate = 24700, InterEx = 24600 },
+                new CurrencyEx { Code = "EUR", Name = "Euro", BaseCurrencyCode = "VND", BuyRate = 26500, SellRate = 26800, InterEx = 26650 });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Specs.AnyAsync())
         {
             var s1 = new Spec { Code = "AO-001-DENIM-M", Name = "Áo sơ mi trắng basic - Denim M", ModelCode = "AO-001", SpecType1 = "SIZE", SpecType2 = "MAU", Color = "Trắng",
@@ -109,7 +117,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

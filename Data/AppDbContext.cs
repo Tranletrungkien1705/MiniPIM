@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Model> Models => Set<Model>();
     public DbSet<ProductType> ProductTypes => Set<ProductType>();
+    public DbSet<CurrencyEx> CurrencyExes => Set<CurrencyEx>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -98,6 +99,14 @@ public class AppDbContext : DbContext
         b.Entity<ProductType>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<CurrencyEx>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.Property(x => x.BuyRate).HasPrecision(18, 6);
+            e.Property(x => x.SellRate).HasPrecision(18, 6);
+            e.Property(x => x.InterEx).HasPrecision(18, 6);
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

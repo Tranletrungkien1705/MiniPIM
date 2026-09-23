@@ -1,0 +1,57 @@
+@model List<CurrencyEx>
+@{ ViewData["Title"] = "Tỷ giá ngoại tệ"; }
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Danh mục tỷ giá ngoại tệ</h6>
+            <form class="d-flex" method="get">
+                <input name="q" value="@ViewBag.Q" class="form-control form-control-sm me-2" placeholder="Tìm mã / tên / đồng tiền gốc..." />
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Mã</th><th>Tên ngoại tệ</th><th>Đồng tiền gốc</th><th class="text-end">Tỷ giá mua</th><th class="text-end">Tỷ giá bán</th><th class="text-end">Liên ngân hàng</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@c.Code</td>
+                    <td>@c.Name</td>
+                    <td class="text-muted small">@c.BaseCurrencyCode</td>
+                    <td class="text-end">@c.BuyRate.ToString("N2")</td>
+                    <td class="text-end">@c.SellRate.ToString("N2")</td>
+                    <td class="text-end">@c.InterEx.ToString("N2")</td>
+                    <td>@if (c.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/CurrencyEx/Edit/@c.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa tỷ giá ngoại tệ này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@c.Id" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="8" class="text-center text-muted py-4">Chưa có tỷ giá ngoại tệ.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm tỷ giá ngoại tệ</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2"><label class="form-label small text-muted">Mã ngoại tệ *</label><input name="code" class="form-control" required placeholder="vd: USD" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên ngoại tệ *</label><input name="name" class="form-control" required placeholder="vd: Đô la Mỹ" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Đồng tiền gốc</label><input name="baseCurrencyCode" class="form-control" placeholder="vd: VND" /></div>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><label class="form-label small text-muted">Tỷ giá mua</label><input name="buyRate" type="number" step="0.000001" value="0" class="form-control" /></div>
+                <div class="col-6"><label class="form-label small text-muted">Tỷ giá bán</label><input name="sellRate" type="number" step="0.000001" value="0" class="form-control" /></div>
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Tỷ giá liên ngân hàng</label><input name="interEx" type="number" step="0.000001" value="0" class="form-control" /></div>
+            <div class="mb-3"><label class="form-label small text-muted">Ghi chú</label><input name="remark" class="form-control" /></div>
+            <input type="hidden" name="active" value="true" />
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+        </form>
+    </div></div></div>
+</div>

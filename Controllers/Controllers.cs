@@ -342,6 +342,42 @@ public class ProductTypeController(IProductService svc) : Controller
     }
 }
 
+public class CurrencyExController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.CurrencyExesAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var c = id.HasValue ? await svc.GetCurrencyExAsync(id.Value) : new CurrencyEx();
+        if (c == null) return NotFound();
+        return View(c);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? baseCurrencyCode,
+        decimal buyRate, decimal sellRate, decimal interEx, string? remark, bool active)
+    {
+        var c = new CurrencyEx { Id = id, Code = code ?? "", Name = name ?? "", BaseCurrencyCode = baseCurrencyCode,
+            BuyRate = buyRate, SellRate = sellRate, InterEx = interEx, Remark = remark, Active = active };
+        var err = await svc.SaveCurrencyExAsync(c);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu tỷ giá ngoại tệ.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteCurrencyExAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa tỷ giá ngoại tệ.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

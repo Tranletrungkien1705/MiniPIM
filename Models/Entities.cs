@@ -114,6 +114,28 @@ public class ProductType : IOrgOwned
 }
 
 /// <summary>
+/// Tỷ giá ngoại tệ (Mst_CurrencyEx của ProductCenter) — danh mục dùng chung cho
+/// product master: bảng giá theo quy cách (SpecPrice.CurrencyCode) quy đổi về đồng
+/// tiền gốc. CurrencyCode là mã ngoại tệ (duy nhất trong tổ chức), CurrencyName là
+/// tên hiển thị, BaseCurrencyCode là đồng tiền gốc quy đổi (phải tồn tại),
+/// BuyRate/SellRate là tỷ giá mua/bán, InterEx là tỷ giá liên ngân hàng.
+/// </summary>
+public class CurrencyEx : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // CurrencyCode — mã ngoại tệ
+    public string Name { get; set; } = "";        // CurrencyName — tên ngoại tệ
+    public string? BaseCurrencyCode { get; set; }  // BaseCurrencyCode — đồng tiền gốc quy đổi
+    public decimal BuyRate { get; set; }           // BuyRate — tỷ giá mua
+    public decimal SellRate { get; set; }          // SellRate — tỷ giá bán
+    public decimal InterEx { get; set; }           // InterEx — tỷ giá liên ngân hàng
+    public string? Remark { get; set; }            // Remark — ghi chú
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).

@@ -60,6 +60,12 @@ public interface IProductService
     Task<ProductType?> GetProductTypeAsync(int id);
     Task<string?> SaveProductTypeAsync(ProductType t);
     Task<string?> DeleteProductTypeAsync(int id);
+
+    // --- Tỷ giá ngoại tệ (Mst_CurrencyEx) ---
+    Task<List<CurrencyEx>> CurrencyExesAsync(string? q);
+    Task<CurrencyEx?> GetCurrencyExAsync(int id);
+    Task<string?> SaveCurrencyExAsync(CurrencyEx c);
+    Task<string?> DeleteCurrencyExAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -597,6 +603,70 @@ public class ProductService(AppDbContext db) : IProductService
         if (await db.Products.AnyAsync(p => p.ProductTypeCode == t.Code))
             return $"Loại Hàng hóa '{t.Name}' đã sử dụng trong Hàng hóa, không thể xóa.";
         db.ProductTypes.Remove(t);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Tỷ giá ngoại tệ (Mst_CurrencyEx) ---
+    public async Task<List<CurrencyEx>> CurrencyExesAsync(string? q)
+    {
+        var query = db.CurrencyExes.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(c => c.Code.Contains(q) || c.Name.Contains(q) || (c.BaseCurrencyCode ?? "").Contains(q));
+        return await query.OrderBy(c => c.Code).ToListAsync();
+    }
+
+    public Task<CurrencyEx?> GetCurrencyExAsync(int id) => db.CurrencyExes.FirstOrDefaultAsync(c => c.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_CurrencyEx_Create / Mst_CurrencyEx_Update / Mst_CurrencyEx_CheckDB):
+    /// mã ngoại tệ & tên bắt buộc, mã không trùng; đồng tiền gốc (BaseCurrencyCode) nếu có
+    /// phải tồn tại (Mst_CurrencyEx_CheckDB_CurrencyCodeNotFound); khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveCurrencyExAsync(CurrencyEx c)
+    {
+        if (string.IsNullOrWhiteSpace(c.Code)) return "Mã Ngoại tệ không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(c.Name)) return "Tên Ngoại tệ không hợp lệ.";
+        c.Code = c.Code.Trim(); c.Name = c.Name.Trim();
+
+        var dupCode = await db.CurrencyExes.AnyAsync(x => x.Code == c.Code && x.Id != c.Id);
+        if (dupCode) return $"Mã Ngoại tệ '{c.Code}' đã tồn tại.";
+
+        // Mst_CurrencyEx_Create: BaseCurrencyCode nếu có phải tồn tại.
+        if (!string.IsNullOrWhiteSpace(c.BaseCurrencyCode))
+        {
+            c.BaseCurrencyCode = c.BaseCurrencyCode.Trim();
+            if (!await db.CurrencyExes.AnyAsync(x => x.Code == c.BaseCurrencyCode))
+                return $"Đồng tiền gốc '{c.BaseCurrencyCode}' không tồn tại.";
+        }
+
+        CurrencyEx target;
+        if (c.Id > 0)
+        {
+            target = await db.CurrencyExes.FirstOrDefaultAsync(x => x.Id == c.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Ngoại tệ.");
+            target.Name = c.Name; target.BaseCurrencyCode = c.BaseCurrencyCode;
+            target.BuyRate = c.BuyRate; target.SellRate = c.SellRate; target.InterEx = c.InterEx;
+            target.Remark = c.Remark; target.Active = c.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = c;
+            db.CurrencyExes.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_CurrencyEx_Delete): ngoại tệ phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteCurrencyExAsync(int id)
+    {
+        var c = await db.CurrencyExes.FirstOrDefaultAsync(x => x.Id == id);
+        if (c == null) return "Không tìm thấy thông tin Ngoại tệ.";
+        db.CurrencyExes.Remove(c);
         await db.SaveChangesAsync();
         return null;
     }

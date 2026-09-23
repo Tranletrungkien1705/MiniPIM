@@ -1,0 +1,42 @@
+@model List<Model>
+@{ ViewData["Title"] = "Model / Dòng sản phẩm"; }
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Danh mục Model (dòng sản phẩm)</h6>
+            <form class="d-flex" method="get">
+                <input name="q" value="@ViewBag.Q" class="form-control form-control-sm me-2" placeholder="Tìm mã / tên / nhãn hiệu..." />
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Mã model</th><th>Tên model</th><th>Nhãn hiệu</th><th>Mã network</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var m in Model)
+            {
+                <tr>
+                    <td class="fw-semibold">@m.Code</td>
+                    <td>@m.Name</td>
+                    <td>@(string.IsNullOrWhiteSpace(m.BrandCode) ? "—" : m.BrandCode)</td>
+                    <td class="text-muted small">@(string.IsNullOrWhiteSpace(m.NetworkModelCode) ? "—" : m.NetworkModelCode)</td>
+                    <td>@if (m.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/Model/Edit/@m.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa model này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@m.Id" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="6" class="text-center text-muted py-4">Chưa có model.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm model</h6>
+        <p class="text-muted small">Model là dòng sản phẩm dùng chung; quy cách (Spec) và sản phẩm tham chiếu theo mã model.</p>
+        <a class="btn btn-primary w-100" href="/Model/Edit"><i class="bi bi-plus-lg me-1"></i>Thêm model</a>
+    </div></div></div>
+</div>

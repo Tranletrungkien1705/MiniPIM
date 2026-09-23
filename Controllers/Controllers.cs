@@ -271,6 +271,43 @@ public class BrandController(IProductService svc) : Controller
     }
 }
 
+public class ModelController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.ModelsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Brands = await svc.BrandsAsync(null);
+        var m = id.HasValue ? await svc.GetModelAsync(id.Value) : new Model();
+        if (m == null) return NotFound();
+        return View(m);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? orgModelCode, string? brandCode,
+        string? networkModelCode, string? remark, bool active)
+    {
+        var m = new Model { Id = id, Code = code ?? "", Name = name ?? "", OrgModelCode = orgModelCode,
+            BrandCode = brandCode, NetworkModelCode = networkModelCode, Remark = remark, Active = active };
+        var err = await svc.SaveModelAsync(m);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu model.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteModelAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa model.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Spec> Specs => Set<Spec>();
     public DbSet<SpecPrice> SpecPrices => Set<SpecPrice>();
     public DbSet<Brand> Brands => Set<Brand>();
+    public DbSet<Model> Models => Set<Model>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -84,6 +85,11 @@ public class AppDbContext : DbContext
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
         b.Entity<Brand>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<Model>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);

@@ -48,6 +48,12 @@ public interface IProductService
     Task<Brand?> GetBrandAsync(int id);
     Task<string?> SaveBrandAsync(Brand b);
     Task<string?> DeleteBrandAsync(int id);
+
+    // --- Model / Dòng sản phẩm (Mst_Model) ---
+    Task<List<Model>> ModelsAsync(string? q);
+    Task<Model?> GetModelAsync(int id);
+    Task<string?> SaveModelAsync(Model m);
+    Task<string?> DeleteModelAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -467,6 +473,68 @@ public class ProductService(AppDbContext db) : IProductService
         if (await db.Groups.AnyAsync(g => g.BrandCode == b.Code))
             return $"Nhãn hiệu '{b.Name}' đã sử dụng trong Nhóm hàng, không thể xóa.";
         db.Brands.Remove(b);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Model / Dòng sản phẩm (Mst_Model) ---
+    public async Task<List<Model>> ModelsAsync(string? q)
+    {
+        var query = db.Models.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(m => m.Code.Contains(q) || m.Name.Contains(q) || (m.BrandCode ?? "").Contains(q));
+        return await query.OrderBy(m => m.Code).ToListAsync();
+    }
+
+    public Task<Model?> GetModelAsync(int id) => db.Models.FirstOrDefaultAsync(m => m.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Model_Create / Mst_Model_Update / Mst_Model_CheckDB):
+    /// mã model & tên model bắt buộc, mã không trùng; nhãn hiệu (BrandCode) bắt buộc và
+    /// phải tồn tại & đang dùng (Mst_Brand_CheckDB); khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveModelAsync(Model m)
+    {
+        if (string.IsNullOrWhiteSpace(m.Code)) return "Mã Model không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(m.Name)) return "Tên Model không hợp lệ.";
+        m.Code = m.Code.Trim(); m.Name = m.Name.Trim();
+
+        var dupCode = await db.Models.AnyAsync(x => x.Code == m.Code && x.Id != m.Id);
+        if (dupCode) return $"Mã Model '{m.Code}' đã tồn tại.";
+
+        // Mst_Model_Create: BrandCode bắt buộc và phải tồn tại & đang dùng.
+        if (string.IsNullOrWhiteSpace(m.BrandCode)) return "Cần chọn Nhãn hiệu cho Model.";
+        var brand = await db.Brands.FirstOrDefaultAsync(b => b.Code == m.BrandCode);
+        if (brand == null) return $"Nhãn hiệu '{m.BrandCode}' không tồn tại.";
+        if (!brand.Active) return $"Nhãn hiệu '{m.BrandCode}' đã ngừng dùng.";
+
+        Model target;
+        if (m.Id > 0)
+        {
+            target = await db.Models.FirstOrDefaultAsync(x => x.Id == m.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Model.");
+            target.Name = m.Name; target.OrgModelCode = m.OrgModelCode; target.BrandCode = m.BrandCode;
+            target.NetworkModelCode = m.NetworkModelCode; target.Remark = m.Remark;
+            target.Active = m.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = m;
+            db.Models.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Model_Delete): model phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteModelAsync(int id)
+    {
+        var m = await db.Models.FirstOrDefaultAsync(x => x.Id == id);
+        if (m == null) return "Không tìm thấy thông tin Model.";
+        db.Models.Remove(m);
         await db.SaveChangesAsync();
         return null;
     }

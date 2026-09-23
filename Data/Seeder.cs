@@ -69,6 +69,21 @@ public static class Seeder
             db.Products.AddRange(p1, p2, p3);
             await db.SaveChangesAsync();
         }
+        if (!await db.Brands.AnyAsync())
+        {
+            db.Brands.AddRange(
+                new Brand { Code = "BRAND-A", Name = "Thương hiệu A", NetworkBrandCode = "BRAND-A" },
+                new Brand { Code = "BRAND-B", Name = "Thương hiệu B", NetworkBrandCode = "BRAND-B" });
+            await db.SaveChangesAsync();
+        }
+        if (!await db.Models.AnyAsync())
+        {
+            db.Models.AddRange(
+                new Model { Code = "AO-001", Name = "Áo sơ mi basic", BrandCode = "BRAND-A", OrgModelCode = "AO-001", NetworkModelCode = "AO-001", Remark = "Dòng áo sơ mi cơ bản" },
+                new Model { Code = "QUAN-001", Name = "Quần jeans slim", BrandCode = "BRAND-A", OrgModelCode = "QUAN-001", NetworkModelCode = "QUAN-001" },
+                new Model { Code = "PK-001", Name = "Thắt lưng da", BrandCode = "BRAND-B", OrgModelCode = "PK-001" });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Specs.AnyAsync())
         {
             var s1 = new Spec { Code = "AO-001-DENIM-M", Name = "Áo sơ mi trắng basic - Denim M", ModelCode = "AO-001", SpecType1 = "SIZE", SpecType2 = "MAU", Color = "Trắng",
@@ -86,7 +101,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

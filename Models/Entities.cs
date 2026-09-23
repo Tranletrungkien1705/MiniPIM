@@ -76,6 +76,27 @@ public class Brand : IOrgOwned
 }
 
 /// <summary>
+/// Model / Dòng sản phẩm (Mst_Model của ProductCenter) — danh mục dùng chung cho
+/// product master: quy cách (Spec.ModelCode) và sản phẩm tham chiếu theo ModelCode.
+/// ModelCode là mã hệ thống (duy nhất trong tổ chức), ModelName là tên hiển thị,
+/// BrandCode là nhãn hiệu (Mst_Brand) mà model thuộc về, NetworkModelCode là mã
+/// model chung của network (dùng khi đồng bộ giữa các tổ chức).
+/// </summary>
+public class Model : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // ModelCode — mã model
+    public string Name { get; set; } = "";        // ModelName — tên model
+    public string? OrgModelCode { get; set; }      // OrgModelCode — mã model theo tổ chức
+    public string? BrandCode { get; set; }         // BrandCode — nhãn hiệu (Mst_Brand)
+    public string? NetworkModelCode { get; set; }  // NetworkModelCode — mã model chung network
+    public string? Remark { get; set; }            // Remark — ghi chú
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).

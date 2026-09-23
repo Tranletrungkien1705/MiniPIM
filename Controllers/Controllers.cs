@@ -46,8 +46,9 @@ public class ProductController(IProductService svc) : Controller
         for (int i = 0; bomName != null && i < bomName.Length; i++)
             bom.Add(new BomLine { ComponentCode = i < (bomCode?.Length ?? 0) ? bomCode![i] : "", ComponentName = bomName[i],
                 Quantity = i < (bomQty?.Length ?? 0) ? bomQty![i] : 1, Uom = i < (bomUom?.Length ?? 0) ? bomUom![i] : "cái" });
-        // Nghiệp vụ ProductCenter: thành phần BOM không được quản lý serial/lô.
-        var err = await svc.ValidateBomAsync(bom);
+        // Nghiệp vụ ProductCenter (Mst_Product_CreateX / Mst_Product_UpdateMasterX):
+        // kiểm tra tham chiếu danh mục (Loại hàng hóa / Thuế suất / ĐVT) + quy tắc Combo + BOM serial/lô.
+        var err = await svc.ValidateProductMasterAsync(p, bom);
         if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         var newId = await svc.SaveProductAsync(p, attrs, bom);
         TempData["Success"] = "Đã lưu sản phẩm.";
@@ -508,6 +509,14 @@ public class SpecTypeController(IProductService svc) : Controller
         var err = await svc.DeleteSpecTypeAsync(id);
         if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa loại quy cách.";
         return RedirectToAction(nameof(Index), new { kind });
+    }
+}
+
+public class MasterCheckController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index()
+    {
+        return View(await svc.AuditMasterAsync());
     }
 }
 

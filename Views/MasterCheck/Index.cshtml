@@ -1,0 +1,36 @@
+@model List<MasterIssue>
+@{ ViewData["Title"] = "Kiểm tra Master Data"; }
+<div class="row g-3">
+    <div class="col-12"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h6 class="fw-bold mb-0">Kiểm tra Master Data</h6>
+                <div class="text-muted small">Quét toàn bộ Hàng hóa theo quy tắc master của ProductCenter (Mst_Product_CreateX / Mst_Product_UpdateMasterX).</div>
+            </div>
+            <a class="btn btn-sm btn-outline-primary" href="/MasterCheck"><i class="bi bi-arrow-clockwise me-1"></i>Quét lại</a>
+        </div>
+
+        @if (Model.Count == 0)
+        {
+            <div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>Không phát hiện vi phạm master data.</div>
+        }
+        else
+        {
+            <div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-2"></i>Phát hiện <b>@Model.Count</b> vi phạm master data.</div>
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Mã hàng hóa</th><th>Tên hàng hóa</th><th>Quy tắc</th><th>Thông báo</th></tr></thead>
+                <tbody>
+                @foreach (var i in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold"><a href="/Product/Edit/@i.Code">@i.Code</a></td>
+                        <td>@i.Name</td>
+                        <td><span class="badge bg-secondary">@i.Rule</span></td>
+                        <td class="text-danger">@i.Message</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </div></div></div>
+</div>

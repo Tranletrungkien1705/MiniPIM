@@ -86,7 +86,14 @@ public interface IProductService
     Task<SpecType?> GetSpecTypeAsync(int id);
     Task<string?> SaveSpecTypeAsync(SpecType t);
     Task<string?> DeleteSpecTypeAsync(int id);
+
+    // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
+    Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
+    Task<List<MasterIssue>> AuditMasterAsync();
 }
+
+/// <summary>Một vi phạm quy tắc master data của Hàng hóa (dùng cho màn Kiểm tra Master Data).</summary>
+public record MasterIssue(string Code, string Name, string Rule, string Message);
 
 public class ProductService(AppDbContext db) : IProductService
 {
@@ -946,5 +953,117 @@ public class ProductService(AppDbContext db) : IProductService
         db.SpecTypes.Remove(t);
         await db.SaveChangesAsync();
         return null;
+    }
+
+    // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CreateX / Mst_Product_UpdateMasterX):
+    /// khi lưu Hàng hóa master phải kiểm tra các tham chiếu danh mục và quy tắc Combo:
+    ///  - Loại hàng hóa (ProductType) phải tồn tại &amp; đang dùng (Mst_ProductType_CheckDB);
+    ///  - Thuế suất (VATRateCode) nếu có phải tồn tại &amp; đang dùng (Mst_VATRate_CheckDB);
+    ///  - Đơn vị tính (UnitCode) nếu có phải tồn tại &amp; đang dùng (Mst_Unit_CheckDB);
+    ///  - Hàng hóa loại COMBO phải có ít nhất 1 thành phần BOM (Mst_Product_Create_InvalidCOMBO);
+    ///  - Thành phần BOM không được quản lý serial/lô (Mst_Product_Create_Invalid_Prd_BOM_FlagSerialOrFlagLot).
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom)
+    {
+        // Mst_ProductType_CheckDB: loại hàng hóa phải tồn tại & đang dùng.
+        if (!string.IsNullOrWhiteSpace(p.ProductTypeCode))
+        {
+            var pt = await db.ProductTypes.FirstOrDefaultAsync(t => t.Code == p.ProductTypeCode);
+            if (pt == null) return $"Không tìm thấy Loại Hàng hóa '{p.ProductTypeCode}'.";
+            if (!pt.Active) return $"Trạng thái Loại Hàng hóa '{p.ProductTypeCode}' không hợp lệ.";
+        }
+
+        // Mst_VATRate_CheckDB: thuế suất nếu có phải tồn tại & đang dùng.
+        if (!string.IsNullOrWhiteSpace(p.VatRateCode))
+        {
+            var vat = await db.VatRates.FirstOrDefaultAsync(v => v.Code == p.VatRateCode);
+            if (vat == null) return $"Lỗi không tìm thấy mã Thuế suất '{p.VatRateCode}'.";
+            if (!vat.Active) return $"Trạng thái Thuế suất '{p.VatRateCode}' không hợp lệ.";
+        }
+
+        // Mst_Unit_CheckDB: đơn vị tính nếu có phải tồn tại & đang dùng.
+        if (!string.IsNullOrWhiteSpace(p.Uom))
+        {
+            var unit = await db.Units.FirstOrDefaultAsync(u => u.CodeUser == p.Uom || u.Code == p.Uom);
+            if (unit == null) return $"Không tìm thấy Mã Đơn vị '{p.Uom}' trong cơ sở dữ liệu.";
+            if (!unit.Active) return $"Trạng thái Đơn vị '{p.Uom}' không hợp lệ.";
+        }
+
+        // Mst_Product_Create_InvalidCOMBO: hàng hóa COMBO phải có thành phần BOM.
+        var isCombo = string.Equals(p.ProductTypeCode, "COMBO", StringComparison.OrdinalIgnoreCase);
+        var hasBom = bom.Any(x => !string.IsNullOrWhiteSpace(x.ComponentName) || !string.IsNullOrWhiteSpace(x.ComponentCode));
+        if (isCombo && !hasBom) return "Thông tin Combo không hợp lệ.";
+
+        // Mst_Product_Create_Invalid_Prd_BOM_FlagSerialOrFlagLot: thành phần BOM không quản lý serial/lô.
+        return await ValidateBomAsync(bom);
+    }
+
+    /// <summary>
+    /// Quét toàn bộ Hàng hóa master và trả về danh sách vi phạm quy tắc master data
+    /// (dùng cho màn Kiểm tra Master Data). Mỗi vi phạm gồm mã/tên hàng hóa, tên quy tắc
+    /// và thông báo lỗi tương ứng nghiệp vụ ProductCenter.
+    /// </summary>
+    public async Task<List<MasterIssue>> AuditMasterAsync()
+    {
+        var products = await db.Products.Include(p => p.Bom).OrderBy(p => p.Code).ToListAsync();
+        var issues = new List<MasterIssue>();
+
+        var productTypes = await db.ProductTypes.ToDictionaryAsync(t => t.Code, t => t.Active);
+        var vatRates = await db.VatRates.ToDictionaryAsync(v => v.Code, v => v.Active);
+        var units = await db.Units.ToListAsync();
+        bool UnitExists(string code) => units.Any(u => u.CodeUser == code || u.Code == code);
+        bool UnitActive(string code) => units.Any(u => (u.CodeUser == code || u.Code == code) && u.Active);
+
+        foreach (var p in products)
+        {
+            // Mst_ProductType_CheckDB.
+            if (!string.IsNullOrWhiteSpace(p.ProductTypeCode))
+            {
+                if (!productTypes.TryGetValue(p.ProductTypeCode, out var ptActive))
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_ProductType_CheckDB", $"Không tìm thấy Loại Hàng hóa '{p.ProductTypeCode}'."));
+                else if (!ptActive)
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_ProductType_CheckDB", $"Trạng thái Loại Hàng hóa '{p.ProductTypeCode}' không hợp lệ."));
+            }
+
+            // Mst_VATRate_CheckDB.
+            if (!string.IsNullOrWhiteSpace(p.VatRateCode))
+            {
+                if (!vatRates.TryGetValue(p.VatRateCode, out var vatActive))
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_VATRate_CheckDB", $"Lỗi không tìm thấy mã Thuế suất '{p.VatRateCode}'."));
+                else if (!vatActive)
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_VATRate_CheckDB", $"Trạng thái Thuế suất '{p.VatRateCode}' không hợp lệ."));
+            }
+
+            // Mst_Unit_CheckDB.
+            if (!string.IsNullOrWhiteSpace(p.Uom))
+            {
+                if (!UnitExists(p.Uom))
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Unit_CheckDB", $"Không tìm thấy Mã Đơn vị '{p.Uom}' trong cơ sở dữ liệu."));
+                else if (!UnitActive(p.Uom))
+                    issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Unit_CheckDB", $"Trạng thái Đơn vị '{p.Uom}' không hợp lệ."));
+            }
+
+            // Mst_Product_Create_InvalidCOMBO.
+            var isCombo = string.Equals(p.ProductTypeCode, "COMBO", StringComparison.OrdinalIgnoreCase);
+            if (isCombo && p.Bom.Count == 0)
+                issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Product_Create_InvalidCOMBO", "Thông tin Combo không hợp lệ."));
+
+            // Mst_Product_Create_Invalid_Prd_BOM_FlagSerialOrFlagLot.
+            if (p.FlagSerial || p.FlagLot)
+            {
+                var codes = p.Bom.Where(x => !string.IsNullOrWhiteSpace(x.ComponentCode)).Select(x => x.ComponentCode).Distinct().ToList();
+                if (codes.Count > 0)
+                {
+                    var bad = await db.Products.Where(x => codes.Contains(x.Code) && (x.FlagSerial || x.FlagLot)).Select(x => x.Code).ToListAsync();
+                    if (bad.Count > 0)
+                        issues.Add(new MasterIssue(p.Code, p.Name, "Mst_Product_Create_Invalid_Prd_BOM_FlagSerialOrFlagLot", $"Hàng hóa không được đồng thời Quản lý LOT và Serial: {string.Join(", ", bad)}"));
+                }
+            }
+        }
+        return issues;
     }
 }

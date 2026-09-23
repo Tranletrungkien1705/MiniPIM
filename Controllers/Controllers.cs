@@ -113,6 +113,40 @@ public class AttributeController(IProductService svc) : Controller
     }
 }
 
+public class UnitController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.UnitsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var u = id.HasValue ? await svc.GetUnitAsync(id.Value) : new Unit();
+        if (u == null) return NotFound();
+        return View(u);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string codeUser, string name, string? remark, bool active)
+    {
+        var u = new Unit { Id = id, Code = code ?? "", CodeUser = codeUser ?? "", Name = name ?? "", Remark = remark, Active = active };
+        var err = await svc.SaveUnitAsync(u);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu đơn vị tính.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteUnitAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa đơn vị tính.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class SpecController(IProductService svc) : Controller
 {
     public async Task<IActionResult> Index(string? q)

@@ -1,0 +1,49 @@
+@model List<Unit>
+@{ ViewData["Title"] = "Đơn vị tính"; }
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0">Danh mục đơn vị tính</h6>
+            <form class="d-flex" method="get">
+                <input name="q" value="@ViewBag.Q" class="form-control form-control-sm me-2" placeholder="Tìm mã / tên..." />
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+        <table class="table table-hover align-middle">
+            <thead><tr><th>Mã hệ thống</th><th>Mã ĐVT</th><th>Tên</th><th>Ghi chú</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td class="text-muted small">@u.Code</td>
+                    <td class="fw-semibold">@u.CodeUser</td>
+                    <td>@u.Name</td>
+                    <td class="text-muted small">@u.Remark</td>
+                    <td>@if (u.Active) { <span class="badge bg-success">Dùng</span> } else { <span class="badge bg-secondary">Ẩn</span> }</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/Unit/Edit/@u.Id"><i class="bi bi-pencil"></i></a>
+                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Xóa đơn vị tính này?');">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@u.Id" />
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="6" class="text-center text-muted py-4">Chưa có đơn vị tính.</td></tr> }
+            </tbody>
+        </table>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Thêm đơn vị tính</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="0" />
+            <div class="mb-2"><label class="form-label small text-muted">Mã ĐVT *</label><input name="codeUser" class="form-control" required placeholder="vd: CAI" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên *</label><input name="name" class="form-control" required placeholder="vd: Cái" /></div>
+            <div class="mb-3"><label class="form-label small text-muted">Ghi chú</label><input name="remark" class="form-control" /></div>
+            <input type="hidden" name="active" value="true" />
+            <button class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm</button>
+        </form>
+    </div></div></div>
+</div>

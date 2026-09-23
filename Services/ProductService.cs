@@ -24,6 +24,12 @@ public interface IProductService
     Task<int> CreateAttributeDefAsync(AttributeDef a);
     Task<PimDash> DashboardAsync();
 
+    // --- Đơn vị tính (Mst_Unit) ---
+    Task<List<Unit>> UnitsAsync(string? q);
+    Task<Unit?> GetUnitAsync(int id);
+    Task<string?> SaveUnitAsync(Unit u);
+    Task<string?> DeleteUnitAsync(int id);
+
     // --- Quy cách (Mst_Spec) & bảng giá theo quy cách (Mst_SpecPrice) ---
     Task<List<Spec>> SpecsAsync(string? q);
     Task<Spec?> GetSpecAsync(int id);
@@ -199,6 +205,63 @@ public class ProductService(AppDbContext db) : IProductService
         db.AttributeDefs.Add(a);
         await db.SaveChangesAsync();
         return a.Id;
+    }
+
+    // --- Đơn vị tính (Mst_Unit) ---
+    public async Task<List<Unit>> UnitsAsync(string? q)
+    {
+        var query = db.Units.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(u => u.Name.Contains(q) || u.Code.Contains(q) || u.CodeUser.Contains(q));
+        return await query.OrderBy(u => u.Name).ToListAsync();
+    }
+
+    public Task<Unit?> GetUnitAsync(int id) => db.Units.FirstOrDefaultAsync(u => u.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Unit_CreateX / Mst_Unit_UpdateX):
+    /// mã người dùng & tên ĐVT bắt buộc, không trùng trong tổ chức; mã hệ thống tự sinh.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveUnitAsync(Unit u)
+    {
+        if (string.IsNullOrWhiteSpace(u.Name)) return "Tên Đơn vị tính không hợp lệ.";
+        u.Name = u.Name.Trim();
+        u.CodeUser = (u.CodeUser ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(u.CodeUser)) return "Mã Đơn vị tính không hợp lệ.";
+
+        var dupName = await db.Units.AnyAsync(x => x.Name == u.Name && x.Id != u.Id);
+        if (dupName) return $"Tên Đơn vị tính '{u.Name}' đã tồn tại.";
+        var dupCodeUser = await db.Units.AnyAsync(x => x.CodeUser == u.CodeUser && x.Id != u.Id);
+        if (dupCodeUser) return $"Mã Đơn vị tính '{u.CodeUser}' đã tồn tại.";
+
+        Unit target;
+        if (u.Id > 0)
+        {
+            target = await db.Units.FirstAsync(x => x.Id == u.Id);
+            target.Name = u.Name; target.CodeUser = u.CodeUser;
+            target.Remark = u.Remark; target.Active = u.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(u.Code)) u.Code = $"UOM{await db.Units.CountAsync() + 1:D4}";
+            target = u;
+            db.Units.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Unit_DeleteX): ĐVT phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteUnitAsync(int id)
+    {
+        var u = await db.Units.FirstOrDefaultAsync(x => x.Id == id);
+        if (u == null) return "Không tìm thấy thông tin Đơn vị tính.";
+        db.Units.Remove(u);
+        await db.SaveChangesAsync();
+        return null;
     }
 
     public async Task<PimDash> DashboardAsync()

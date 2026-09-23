@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductAttribute> Attributes => Set<ProductAttribute>();
     public DbSet<BomLine> BomLines => Set<BomLine>();
     public DbSet<AttributeDef> AttributeDefs => Set<AttributeDef>();
+    public DbSet<Unit> Units => Set<Unit>();
     public DbSet<Spec> Specs => Set<Spec>();
     public DbSet<SpecPrice> SpecPrices => Set<SpecPrice>();
 
@@ -40,6 +41,13 @@ public class AppDbContext : DbContext
         b.Entity<AttributeDef>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<Unit>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasIndex(x => new { x.OrgId, x.CodeUser }).IsUnique();
+            e.HasIndex(x => new { x.OrgId, x.Name }).IsUnique();
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
         b.Entity<ProductAttribute>(e =>

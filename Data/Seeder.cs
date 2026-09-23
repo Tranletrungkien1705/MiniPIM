@@ -33,6 +33,17 @@ public static class Seeder
                 new AttributeDef { Code = "XUATXU", Name = "Xuất xứ" });
             await db.SaveChangesAsync();
         }
+        if (!await db.Units.AnyAsync())
+        {
+            db.Units.AddRange(
+                new Unit { Code = "UOM0001", CodeUser = "CAI", Name = "Cái", Remark = "Đơn vị đếm cơ bản" },
+                new Unit { Code = "UOM0002", CodeUser = "CHIEC", Name = "Chiếc" },
+                new Unit { Code = "UOM0003", CodeUser = "BO", Name = "Bộ" },
+                new Unit { Code = "UOM0004", CodeUser = "KG", Name = "Kilôgam" },
+                new Unit { Code = "UOM0005", CodeUser = "M", Name = "Mét", Remark = "Dùng cho vải, dây" },
+                new Unit { Code = "UOM0006", CodeUser = "THUNG", Name = "Thùng" });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Products.AnyAsync())
         {
             var groups = await db.Groups.ToListAsync();
@@ -66,7 +77,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

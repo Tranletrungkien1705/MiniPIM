@@ -25,6 +25,23 @@ public class AttributeDef : IOrgOwned
 }
 
 /// <summary>
+/// Đơn vị tính (Mst_Unit của ProductCenter) — danh mục ĐVT dùng chung cho sản phẩm,
+/// quy cách và bảng giá. UnitCode là mã hệ thống (tự sinh), UnitCodeUser là mã
+/// người dùng nhập; cả hai cùng UnitName đều duy nhất trong một tổ chức.
+/// </summary>
+public class Unit : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // UnitCode — mã hệ thống (tự sinh)
+    public string CodeUser { get; set; } = "";    // UnitCodeUser — mã người dùng nhập
+    public string Name { get; set; } = "";        // UnitName
+    public string? Remark { get; set; }            // Remark — ghi chú
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).

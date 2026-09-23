@@ -1,0 +1,26 @@
+@{ ViewData["Title"] = "Bảng điều khiển"; var d = (PimDash)ViewBag.Dash; }
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted small">Sản phẩm</div><div class="stat-num">@d.Products</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted small">Đang bán</div><div class="stat-num text-success">@d.Active</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted small">Nhóm</div><div class="stat-num">@d.Groups</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="text-muted small">Có định mức BOM</div><div class="stat-num">@d.WithBom</div></div></div></div>
+</div>
+<div class="row g-3">
+    <div class="col-lg-7"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">Sản phẩm theo nhóm</h6>
+        @foreach (var (g, c) in d.ByGroup)
+        {
+            var pct = d.Products == 0 ? 0 : c * 100 / d.Products;
+            <div class="mb-2"><div class="d-flex justify-content-between small"><span>@g</span><span class="text-muted">@c</span></div>
+                <div class="progress" style="height:7px"><div class="progress-bar" style="width:@pct%;background:#4f46e5"></div></div></div>
+        }
+        @if (d.ByGroup.Count == 0) { <div class="text-muted">Chưa có sản phẩm.</div> }
+    </div></div></div>
+    <div class="col-lg-5"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-2">Catalog API</h6>
+        <p class="text-muted small">Cấp danh mục chuẩn cho MiniDMS / MiniWMS / MiniStamp:</p>
+        <div class="mb-1"><code>GET /api/products</code></div>
+        <div class="mb-3"><code>GET /api/products/{code}</code></div>
+        <a href="/Product/Edit" class="btn btn-primary w-100"><i class="bi bi-plus-lg me-1"></i>Thêm sản phẩm</a>
+    </div></div></div>
+</div>

@@ -84,6 +84,14 @@ public static class Seeder
                 new Model { Code = "PK-001", Name = "Thắt lưng da", BrandCode = "BRAND-B", OrgModelCode = "PK-001" });
             await db.SaveChangesAsync();
         }
+        if (!await db.ProductTypes.AnyAsync())
+        {
+            db.ProductTypes.AddRange(
+                new ProductType { Code = "NORMAL", Name = "Hàng thường", Remark = "Hàng hóa bán lẻ thông thường" },
+                new ProductType { Code = "COMBO", Name = "Hàng combo", Remark = "Bán theo bộ thành phần (BOM)" },
+                new ProductType { Code = "SERVICE", Name = "Dịch vụ", Remark = "Hàng hóa không quản lý tồn kho" });
+            await db.SaveChangesAsync();
+        }
         if (!await db.Specs.AnyAsync())
         {
             var s1 = new Spec { Code = "AO-001-DENIM-M", Name = "Áo sơ mi trắng basic - Denim M", ModelCode = "AO-001", SpecType1 = "SIZE", SpecType2 = "MAU", Color = "Trắng",
@@ -101,7 +109,7 @@ public static class Seeder
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",
@@ -116,6 +124,8 @@ public static class Seeder
         sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"FlagFG\" boolean NOT NULL DEFAULT false");
         sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"Active\" boolean NOT NULL DEFAULT true");
         sql.Add("ALTER TABLE minipim.\"Groups\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");
+        // Loại hàng hóa (Mst_ProductType): cột tham chiếu trên Hàng hóa.
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductTypeCode\" text NULL");
         foreach (var s in sql) try { await db.Database.ExecuteSqlRawAsync(s); } catch { }
     }
 }

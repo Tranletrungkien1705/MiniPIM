@@ -54,6 +54,12 @@ public interface IProductService
     Task<Model?> GetModelAsync(int id);
     Task<string?> SaveModelAsync(Model m);
     Task<string?> DeleteModelAsync(int id);
+
+    // --- Loại hàng hóa (Mst_ProductType) ---
+    Task<List<ProductType>> ProductTypesAsync(string? q);
+    Task<ProductType?> GetProductTypeAsync(int id);
+    Task<string?> SaveProductTypeAsync(ProductType t);
+    Task<string?> DeleteProductTypeAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -535,6 +541,62 @@ public class ProductService(AppDbContext db) : IProductService
         var m = await db.Models.FirstOrDefaultAsync(x => x.Id == id);
         if (m == null) return "Không tìm thấy thông tin Model.";
         db.Models.Remove(m);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Loại hàng hóa (Mst_ProductType) ---
+    public async Task<List<ProductType>> ProductTypesAsync(string? q)
+    {
+        var query = db.ProductTypes.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(t => t.Code.Contains(q) || t.Name.Contains(q));
+        return await query.OrderBy(t => t.Code).ToListAsync();
+    }
+
+    public Task<ProductType?> GetProductTypeAsync(int id) => db.ProductTypes.FirstOrDefaultAsync(t => t.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductType_Create / Mst_ProductType_UpdateX / Mst_ProductType_CheckDB):
+    /// mã loại hàng hóa & tên bắt buộc, mã không trùng; khi sửa phải tồn tại.
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveProductTypeAsync(ProductType t)
+    {
+        if (string.IsNullOrWhiteSpace(t.Code)) return "Mã Loại Hàng hóa không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(t.Name)) return "Tên Loại Hàng hóa không hợp lệ.";
+        t.Code = t.Code.Trim(); t.Name = t.Name.Trim();
+
+        var dupCode = await db.ProductTypes.AnyAsync(x => x.Code == t.Code && x.Id != t.Id);
+        if (dupCode) return $"Loại Hàng hóa '{t.Code}' đã tồn tại.";
+
+        ProductType target;
+        if (t.Id > 0)
+        {
+            target = await db.ProductTypes.FirstOrDefaultAsync(x => x.Id == t.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Loại Hàng hóa.");
+            target.Name = t.Name; target.Remark = t.Remark; target.Active = t.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = t;
+            db.ProductTypes.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_ProductType_Delete): loại hàng hóa phải tồn tại mới cho xóa,
+    /// và không cho xóa nếu đang được hàng hóa sử dụng (Mst_Product.ProductType).
+    /// </summary>
+    public async Task<string?> DeleteProductTypeAsync(int id)
+    {
+        var t = await db.ProductTypes.FirstOrDefaultAsync(x => x.Id == id);
+        if (t == null) return "Không tìm thấy thông tin Loại Hàng hóa.";
+        if (await db.Products.AnyAsync(p => p.ProductTypeCode == t.Code))
+            return $"Loại Hàng hóa '{t.Name}' đã sử dụng trong Hàng hóa, không thể xóa.";
+        db.ProductTypes.Remove(t);
         await db.SaveChangesAsync();
         return null;
     }

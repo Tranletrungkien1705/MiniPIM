@@ -55,7 +55,7 @@ app.MapGet("/api/products/{code}", async (string code, IProductService svc) =>
     return p is null ? Results.NotFound() : Results.Ok(new
     {
         p.Code, p.Name, group = p.Group?.Name, p.Uom, p.Barcode, p.CostPrice, p.SalePrice, p.Description,
-        level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach,
+        level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach, p.ProductTypeCode,
         attributes = p.Attributes.Select(a => new { a.Name, a.Value }),
         bom = p.Bom.Select(x => new { x.ComponentCode, x.ComponentName, x.Quantity, x.Uom })
     });
@@ -79,6 +79,13 @@ app.MapGet("/api/specs/{code}/prices", async (string code, IProductService svc) 
         p.UnitCode, p.BuyPrice, p.SellPrice, p.CurrencyCode, p.VatRateCode, p.DiscountVnd,
         effectStart = p.EffectDTimeStart.ToString("yyyy-MM-dd"), effectEnd = p.EffectDTimeEnd.ToString("yyyy-MM-dd")
     }));
+});
+
+// Loại hàng hóa (Mst_ProductType) — danh mục dùng chung cho product master.
+app.MapGet("/api/product-types", async (string? q, IProductService svc) =>
+{
+    var list = await svc.ProductTypesAsync(q);
+    return Results.Ok(list.Where(t => t.Active).Select(t => new { t.Code, t.Name, t.Remark }));
 });
 
 app.MapPost("/api/orgs/register", async (RegisterOrgDto dto, AppDbContext db) =>

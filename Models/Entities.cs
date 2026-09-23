@@ -97,6 +97,23 @@ public class Model : IOrgOwned
 }
 
 /// <summary>
+/// Loại hàng hóa (Mst_ProductType của ProductCenter) — danh mục dùng chung cho
+/// product master: sản phẩm tham chiếu theo ProductType. ProductType là mã hệ thống
+/// (duy nhất trong tổ chức), ProductTypeName là tên hiển thị. Loại "COMBO" (TConst.ProductType.Combo)
+/// đánh dấu hàng hóa là combo (bán theo bộ thành phần).
+/// </summary>
+public class ProductType : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // ProductType — mã loại hàng hóa
+    public string Name { get; set; } = "";        // ProductTypeName — tên loại hàng hóa
+    public string? Remark { get; set; }            // Remark — ghi chú
+    public bool Active { get; set; } = true;       // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
 /// Nhóm hàng (Mst_ProductGroup của ProductCenter) — phân cấp cha/con.
 /// BUCode/BUPattern/Level là "đường dẫn vật chất hóa" (materialized path) được
 /// tính lại tự động từ cây cha/con (nghiệp vụ Mst_ProductGroup_UpdBU).
@@ -145,6 +162,7 @@ public class Product : IOrgOwned
     public bool FlagLot { get; set; }                               // quản lý theo lô
     public string? Origin { get; set; }                             // xuất xứ (ProductOrigin)
     public string? QuyCach { get; set; }                            // quy cách đóng gói (ProductQuyCach)
+    public string? ProductTypeCode { get; set; }                    // ProductType — loại hàng hóa (Mst_ProductType)
 
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 

@@ -308,6 +308,40 @@ public class ModelController(IProductService svc) : Controller
     }
 }
 
+public class ProductTypeController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.ProductTypesAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var t = id.HasValue ? await svc.GetProductTypeAsync(id.Value) : new ProductType();
+        if (t == null) return NotFound();
+        return View(t);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? remark, bool active)
+    {
+        var t = new ProductType { Id = id, Code = code ?? "", Name = name ?? "", Remark = remark, Active = active };
+        var err = await svc.SaveProductTypeAsync(t);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu loại hàng hóa.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteProductTypeAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa loại hàng hóa.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

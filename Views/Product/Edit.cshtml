@@ -12,7 +12,8 @@
             <h6 class="fw-bold mb-3">Thông tin sản phẩm</h6>
             <div class="row g-3">
                 <div class="col-md-4"><label class="form-label small text-muted">Mã SKU</label><input name="code" value="@Model.Code" class="form-control" placeholder="tự sinh" /></div>
-                <div class="col-md-8"><label class="form-label small text-muted">Tên *</label><input name="name" value="@Model.Name" class="form-control" required /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Mã hàng hóa người dùng</label><input name="codeUser" value="@Model.CodeUser" class="form-control" placeholder="duy nhất trong tổ chức" /></div>
+                <div class="col-md-4"><label class="form-label small text-muted">Tên *</label><input name="name" value="@Model.Name" class="form-control" required /></div>
                 <div class="col-md-5"><label class="form-label small text-muted">Nhóm</label>
                     <select name="groupId" class="form-select"><option value="">—</option>
                         @foreach (var g in groups) { <option value="@g.Id" selected="@(Model.GroupId==g.Id)">@g.Name</option> }

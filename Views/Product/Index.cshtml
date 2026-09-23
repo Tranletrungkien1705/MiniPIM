@@ -10,19 +10,23 @@
         <div class="col-auto"><button class="btn btn-primary">Lọc</button></div>
         <div class="col-auto ms-auto"><a href="/Product/Edit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Thêm</a></div>
     </form>
+    <form method="get" action="/Product/ByCodeUser" class="row g-2 mb-3">
+        <div class="col-md-4"><input name="codeUser" class="form-control" placeholder="Tra theo Mã hàng hóa người dùng..." /></div>
+        <div class="col-auto"><button class="btn btn-outline-primary"><i class="bi bi-search me-1"></i>Tra mã người dùng</button></div>
+    </form>
     <table class="table table-hover align-middle">
-        <thead><tr><th>Mã</th><th>Tên</th><th>Nhóm</th><th>ĐVT</th><th class="text-end">Giá vốn</th><th class="text-end">Giá bán</th><th>TT</th><th>Vòng đời</th></tr></thead>
+        <thead><tr><th>Mã</th><th>Mã người dùng</th><th>Tên</th><th>Nhóm</th><th>ĐVT</th><th class="text-end">Giá vốn</th><th class="text-end">Giá bán</th><th>TT</th><th>Vòng đời</th></tr></thead>
         <tbody>
         @foreach (var p in Model)
         {
             <tr style="cursor:pointer" onclick="location.href='/Product/Edit/@p.Id'">
-                <td class="fw-semibold">@p.Code</td><td>@p.Name</td><td class="small text-muted">@(p.Group?.Name ?? "—")</td>
+                <td class="fw-semibold">@p.Code</td><td class="small text-muted">@(p.CodeUser ?? "—")</td><td>@p.Name</td><td class="small text-muted">@(p.Group?.Name ?? "—")</td>
                 <td>@p.Uom</td><td class="text-end">@p.CostPrice.ToString("N0")</td><td class="text-end">@p.SalePrice.ToString("N0")</td>
                 <td>@if (p.Status == ProductStatus.Active) { <span class="badge bg-success">Bán</span> } else { <span class="badge bg-secondary">Ngừng</span> }</td>
                 <td>@if (p.DTimeUsed.HasValue) { <span class="badge bg-warning text-dark" title="@p.DTimeUsed.Value.ToString("yyyy-MM-dd")">Đã dùng</span> } else { <span class="badge bg-light text-muted">Mới</span> }</td>
             </tr>
         }
-        @if (Model.Count == 0) { <tr><td colspan="8" class="text-center text-muted py-4">Không có sản phẩm.</td></tr> }
+        @if (Model.Count == 0) { <tr><td colspan="9" class="text-center text-muted py-4">Không có sản phẩm.</td></tr> }
         </tbody>
     </table>
 </div></div>

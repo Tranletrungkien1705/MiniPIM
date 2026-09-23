@@ -42,6 +42,7 @@ public class AppDbContext : DbContext
         b.Entity<Product>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasIndex(x => new { x.OrgId, x.CodeUser }).IsUnique();
             e.Property(x => x.CostPrice).HasPrecision(18, 2);
             e.Property(x => x.SalePrice).HasPrecision(18, 2);
             e.Property(x => x.ValConvert).HasPrecision(18, 3);

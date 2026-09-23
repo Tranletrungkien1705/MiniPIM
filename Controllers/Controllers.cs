@@ -29,18 +29,22 @@ public class ProductController(IProductService svc) : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Save(int id, string code, string name, int? groupId, string uom, string? barcode,
+    public async Task<IActionResult> Save(int id, string code, string? codeUser, string name, int? groupId, string uom, string? barcode,
         decimal costPrice, decimal salePrice, string? description, ProductStatus status,
         ProductLevel level, decimal valConvert, decimal qtyMinSt, decimal qtyMaxSt, string? vatRateCode,
         bool flagSerial, bool flagLot, string? origin, string? quyCach, string? ssccTypeCode, string? gtin,
         string[]? attrName, string[]? attrValue, string[]? bomCode, string[]? bomName, decimal[]? bomQty, string[]? bomUom)
     {
         if (string.IsNullOrWhiteSpace(name)) { TempData["Error"] = "Cần tên sản phẩm."; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
-        var p = new Product { Id = id, Code = code ?? "", Name = name.Trim(), GroupId = groupId, Uom = string.IsNullOrWhiteSpace(uom) ? "cái" : uom,
+        var p = new Product { Id = id, Code = code ?? "", CodeUser = string.IsNullOrWhiteSpace(codeUser) ? null : codeUser.Trim(),
+            Name = name.Trim(), GroupId = groupId, Uom = string.IsNullOrWhiteSpace(uom) ? "cái" : uom,
             Barcode = barcode, CostPrice = costPrice, SalePrice = salePrice, Description = description, Status = status,
             Level = level, ValConvert = valConvert <= 0 ? 1 : valConvert, QtyMinSt = qtyMinSt, QtyMaxSt = qtyMaxSt,
             VatRateCode = vatRateCode, FlagSerial = flagSerial, FlagLot = flagLot, Origin = origin, QuyCach = quyCach,
             SsccTypeCode = ssccTypeCode, Gtin = gtin };
+        // Mst_Product_CheckProductCodeUser: Mã Hàng hóa người dùng phải duy nhất trong tổ chức.
+        var codeUserErr = await svc.ValidateProductCodeUserAsync(p);
+        if (codeUserErr != null) { TempData["Error"] = codeUserErr; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
         var attrs = new List<ProductAttribute>();
         for (int i = 0; attrName != null && i < attrName.Length; i++)
             attrs.Add(new ProductAttribute { Name = attrName[i], Value = i < (attrValue?.Length ?? 0) ? attrValue![i] : "" });
@@ -72,6 +76,18 @@ public class ProductController(IProductService svc) : Controller
         var err = await svc.MarkProductUsedAsync(id, dtimeUsed);
         if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã đánh dấu hàng hóa đã sử dụng.";
         return RedirectToAction(nameof(Edit), new { id });
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CheckProductCodeUser): tra hàng hóa theo
+    /// Mã Hàng hóa người dùng (ProductCodeUser).
+    /// </summary>
+    public async Task<IActionResult> ByCodeUser(string codeUser)
+    {
+        if (string.IsNullOrWhiteSpace(codeUser)) { TempData["Error"] = "Cần nhập Mã Hàng hóa người dùng."; return RedirectToAction(nameof(Index)); }
+        var p = await svc.GetByCodeUserAsync(codeUser.Trim());
+        if (p == null) { TempData["Error"] = $"Không tìm thấy Mã Hàng hóa '{codeUser}'."; return RedirectToAction(nameof(Index)); }
+        return RedirectToAction(nameof(Edit), new { id = p.Id });
     }
 }
 

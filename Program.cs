@@ -54,12 +54,18 @@ app.MapGet("/api/products/{code}", async (string code, IProductService svc) =>
     var p = await svc.GetByCodeAsync(code);
     return p is null ? Results.NotFound() : Results.Ok(new
     {
-        p.Code, p.Name, group = p.Group?.Name, p.Uom, p.Barcode, p.CostPrice, p.SalePrice, p.Description,
+        p.Code, codeUser = p.CodeUser, p.Name, group = p.Group?.Name, p.Uom, p.Barcode, p.CostPrice, p.SalePrice, p.Description,
         level = p.Level.ToString(), p.ValConvert, p.QtyMinSt, p.QtyMaxSt, p.VatRateCode, p.FlagSerial, p.FlagLot, p.Origin, p.QuyCach, p.ProductTypeCode, p.SsccTypeCode, p.Gtin,
         dtimeUsed = p.DTimeUsed?.ToString("yyyy-MM-dd"),
         attributes = p.Attributes.Select(a => new { a.Name, a.Value }),
         bom = p.Bom.Select(x => new { x.ComponentCode, x.ComponentName, x.Quantity, x.Uom })
     });
+});
+// Mã hàng hóa người dùng (Mst_Product.ProductCodeUser) — tra hàng hóa theo mã người dùng.
+app.MapGet("/api/products/by-code-user/{codeUser}", async (string codeUser, IProductService svc) =>
+{
+    var p = await svc.GetByCodeUserAsync(codeUser);
+    return p is null ? Results.NotFound() : Results.Ok(new { p.Code, codeUser = p.CodeUser, p.Name, p.Uom, p.Barcode });
 });
 
 // Quy cách & bảng giá theo quy cách (Mst_Spec / Mst_SpecPrice).

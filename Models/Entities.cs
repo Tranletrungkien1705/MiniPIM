@@ -170,7 +170,8 @@ public class Product : IOrgOwned
 {
     public int Id { get; set; }
     public Guid OrgId { get; set; }
-    public string Code { get; set; } = "";        // SKU
+    public string Code { get; set; } = "";        // SKU (ProductCode — mã hệ thống)
+    public string? CodeUser { get; set; }           // ProductCodeUser — mã hàng hóa người dùng nhập (duy nhất trong tổ chức)
     public string Name { get; set; } = "";
     public int? GroupId { get; set; }
     public string Uom { get; set; } = "cái";       // đơn vị tính

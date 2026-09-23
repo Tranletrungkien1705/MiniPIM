@@ -115,6 +115,10 @@ public interface IProductService
     Task<string?> SaveProductCustomFieldAsync(ProductCustomField f);
     Task<string?> DeleteProductCustomFieldAsync(int id);
 
+    // --- Mã hàng hóa người dùng (Mst_Product.ProductCodeUser) ---
+    Task<Product?> GetByCodeUserAsync(string codeUser);
+    Task<string?> ValidateProductCodeUserAsync(Product p);
+
     // --- Kiểm tra Master Data (Mst_Product_CreateX / Mst_Product_UpdateMasterX) ---
     Task<string?> ValidateProductMasterAsync(Product p, List<BomLine> bom);
     Task<List<MasterIssue>> AuditMasterAsync();
@@ -154,6 +158,7 @@ public class ProductService(AppDbContext db) : IProductService
         {
             target = await db.Products.Include(x => x.Attributes).Include(x => x.Bom).FirstAsync(x => x.Id == p.Id);
             target.Name = p.Name; target.GroupId = p.GroupId; target.Uom = p.Uom; target.Barcode = p.Barcode;
+            target.CodeUser = p.CodeUser;
             target.CostPrice = p.CostPrice; target.SalePrice = p.SalePrice; target.ImageUrl = p.ImageUrl;
             target.Description = p.Description; target.Status = p.Status; target.UpdatedAt = DateTime.Now;
             target.Level = p.Level; target.ValConvert = p.ValConvert; target.QtyMinSt = p.QtyMinSt; target.QtyMaxSt = p.QtyMaxSt;
@@ -1269,6 +1274,33 @@ public class ProductService(AppDbContext db) : IProductService
         if (f == null) return "Không tìm thấy chi tiết Thông tin động của Hàng hóa.";
         db.ProductCustomFields.Remove(f);
         await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Mã hàng hóa người dùng (Mst_Product.ProductCodeUser) ---
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CheckProductCodeUser): tra hàng hóa theo
+    /// Mã Hàng hóa người dùng (ProductCodeUser) trong tổ chức.
+    /// </summary>
+    public Task<Product?> GetByCodeUserAsync(string codeUser) =>
+        string.IsNullOrWhiteSpace(codeUser)
+            ? Task.FromResult<Product?>(null)
+            : db.Products.Include(p => p.Group).FirstOrDefaultAsync(p => p.CodeUser == codeUser);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Product_CheckProductCodeUser / Mst_Product_Create_InvalidProductCodeUK /
+    /// Mst_Product_Update_InvalidProductCodeUK): Mã Hàng hóa người dùng (ProductCodeUser) nếu có
+    /// phải duy nhất trong tổ chức — không được trùng với hàng hóa khác
+    /// (Mst_Product_CheckDB_ProductCodeUserExist — "Mã Hàng hóa đã tồn tại. (0839)").
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> ValidateProductCodeUserAsync(Product p)
+    {
+        var codeUser = (p.CodeUser ?? "").Trim();
+        if (codeUser.Length == 0) return null;
+        var dup = await db.Products.AnyAsync(x => x.CodeUser == codeUser && x.Id != p.Id);
+        if (dup) return $"Mã Hàng hóa '{codeUser}' đã tồn tại.";
         return null;
     }
 

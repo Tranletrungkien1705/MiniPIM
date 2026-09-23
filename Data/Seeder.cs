@@ -57,16 +57,16 @@ public static class Seeder
         {
             var groups = await db.Groups.ToListAsync();
             int GId(string c) => groups.First(g => g.Code == c).Id;
-            var p1 = new Product { Code = "AO-001", Name = "Áo sơ mi trắng basic", GroupId = GId("AO"), Uom = "cái", Barcode = "8930001", CostPrice = 120000, SalePrice = 250000,
+            var p1 = new Product { Code = "AO-001", CodeUser = "AO-001", Name = "Áo sơ mi trắng basic", GroupId = GId("AO"), Uom = "cái", Barcode = "8930001", CostPrice = 120000, SalePrice = 250000,
                 Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 20, QtyMaxSt = 500, VatRateCode = "VAT10", Origin = "Việt Nam", QuyCach = "1 cái/túi",
                 ProductCodeRoot = "AO-001", ProductCodeBase = "AO-001",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Cotton 100%" }, new() { Name = "Màu", Value = "Trắng" } ] };
-            var p2 = new Product { Code = "QUAN-001", Name = "Quần jeans slim", GroupId = GId("QUAN"), Uom = "cái", CostPrice = 200000, SalePrice = 450000,
+            var p2 = new Product { Code = "QUAN-001", CodeUser = "QUAN-001", Name = "Quần jeans slim", GroupId = GId("QUAN"), Uom = "cái", CostPrice = 200000, SalePrice = 450000,
                 Level = ProductLevel.Base, ValConvert = 1, QtyMinSt = 10, QtyMaxSt = 300, VatRateCode = "VAT10", Origin = "Việt Nam",
                 ProductCodeRoot = "QUAN-001", ProductCodeBase = "QUAN-001",
                 Attributes = [ new() { Name = "Chất liệu", Value = "Denim" } ],
                 Bom = [ new() { ComponentCode = "VAI-DENIM", ComponentName = "Vải denim", Quantity = 1.2m, Uom = "m" }, new() { ComponentCode = "KHOA", ComponentName = "Khóa kéo", Quantity = 1, Uom = "cái" } ] };
-            var p3 = new Product { Code = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000,
+            var p3 = new Product { Code = "PK-001", CodeUser = "PK-001", Name = "Thắt lưng da", GroupId = GId("PK"), Uom = "cái", CostPrice = 80000, SalePrice = 180000,
                 Level = ProductLevel.L2, ValConvert = 1, VatRateCode = "VAT10", DTimeUsed = new DateTime(2024, 1, 1),
                 ProductCodeRoot = "PK-001", ProductCodeBase = "PK-001" };
             db.Products.AddRange(p1, p2, p3);
@@ -218,6 +218,8 @@ public static class Seeder
         // Phân cấp hàng hóa (Mst_Product): mã gốc / mã cơ sở.
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductCodeRoot\" text NULL");
         sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"ProductCodeBase\" text NULL");
+        // Mã hàng hóa người dùng (Mst_Product.ProductCodeUser).
+        sql.Add("ALTER TABLE minipim.\"Products\" ADD COLUMN IF NOT EXISTS \"CodeUser\" text NULL");
         // Thuộc tính (Mst_Attribute): mã dùng chung network.
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"NetworkId\" text NULL");
         sql.Add("ALTER TABLE minipim.\"AttributeDefs\" ADD COLUMN IF NOT EXISTS \"UpdatedAt\" timestamp NOT NULL DEFAULT now()");

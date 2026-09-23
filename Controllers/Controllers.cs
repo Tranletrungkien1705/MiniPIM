@@ -421,6 +421,42 @@ public class SpecUnitController(IProductService svc) : Controller
     }
 }
 
+public class SpecCustomFieldController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? q)
+    {
+        ViewBag.Q = q;
+        return View(await svc.SpecCustomFieldsAsync(q));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        var f = id.HasValue ? await svc.GetSpecCustomFieldAsync(id.Value) : new SpecCustomField();
+        if (f == null) return NotFound();
+        return View(f);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string code, string name, string? networkId, string? dbPhysicalType,
+        string? remark, bool active)
+    {
+        var f = new SpecCustomField { Id = id, Code = code ?? "", Name = name ?? "", NetworkId = networkId,
+            DBPhysicalType = dbPhysicalType, Remark = remark, Active = active };
+        var err = await svc.SaveSpecCustomFieldAsync(f);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu trường tùy chỉnh quy cách.";
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var err = await svc.DeleteSpecCustomFieldAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa trường tùy chỉnh quy cách.";
+        return RedirectToAction(nameof(Index));
+    }
+}
+
 public class OrgController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()

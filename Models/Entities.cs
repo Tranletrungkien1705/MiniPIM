@@ -290,3 +290,23 @@ public class SpecUnit : IOrgOwned
     public bool Active { get; set; } = true;           // FlagActive
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+/// <summary>
+/// Trường tùy chỉnh của quy cách (Mst_SpecCustomField của ProductCenter) — danh mục
+/// định nghĩa các trường động gắn cho quy cách (Mst_Spec). SpecCustomFieldCode là mã
+/// hệ thống (duy nhất trong tổ chức), SpecCustomFieldName là tên hiển thị,
+/// DBPhysicalType là kiểu dữ liệu vật lý lưu trong DB (mặc định nvarchar(400)),
+/// NetworkID là mã dùng chung của network (đồng bộ giữa các tổ chức).
+/// </summary>
+public class SpecCustomField : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string Code { get; set; } = "";        // SpecCustomFieldCode — mã trường tùy chỉnh
+    public string Name { get; set; } = "";        // SpecCustomFieldName — tên trường tùy chỉnh
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? DBPhysicalType { get; set; }     // DBPhysicalType — kiểu dữ liệu vật lý (mặc định nvarchar(400))
+    public string? Remark { get; set; }             // Remark — ghi chú
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

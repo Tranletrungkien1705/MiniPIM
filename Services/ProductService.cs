@@ -72,6 +72,12 @@ public interface IProductService
     Task<SpecUnit?> GetSpecUnitAsync(int id);
     Task<string?> SaveSpecUnitAsync(SpecUnit u);
     Task<string?> DeleteSpecUnitAsync(int id);
+
+    // --- Trường tùy chỉnh quy cách (Mst_SpecCustomField) ---
+    Task<List<SpecCustomField>> SpecCustomFieldsAsync(string? q);
+    Task<SpecCustomField?> GetSpecCustomFieldAsync(int id);
+    Task<string?> SaveSpecCustomFieldAsync(SpecCustomField f);
+    Task<string?> DeleteSpecCustomFieldAsync(int id);
 }
 
 public class ProductService(AppDbContext db) : IProductService
@@ -752,6 +758,67 @@ public class ProductService(AppDbContext db) : IProductService
         var u = await db.SpecUnits.FirstOrDefaultAsync(x => x.Id == id);
         if (u == null) return "Không tìm thấy thông tin Đơn vị tính theo quy cách.";
         db.SpecUnits.Remove(u);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Trường tùy chỉnh quy cách (Mst_SpecCustomField) ---
+    public async Task<List<SpecCustomField>> SpecCustomFieldsAsync(string? q)
+    {
+        var query = db.SpecCustomFields.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(q))
+            query = query.Where(f => f.Code.Contains(q) || f.Name.Contains(q) || (f.DBPhysicalType ?? "").Contains(q));
+        return await query.OrderBy(f => f.Code).ToListAsync();
+    }
+
+    public Task<SpecCustomField?> GetSpecCustomFieldAsync(int id) =>
+        db.SpecCustomFields.FirstOrDefaultAsync(f => f.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecCustomField_Create / Mst_SpecCustomField_Update /
+    /// Mst_SpecCustomField_CheckDB): mã trường tùy chỉnh bắt buộc & không trùng trong tổ chức,
+    /// tên trường tùy chỉnh bắt buộc (Mst_SpecCustomField_Update_InvalidSpecCustomFieldName),
+    /// khi sửa phải tồn tại (Mst_SpecCustomField_CheckDB_CustomFieldNotFound).
+    /// Kiểu dữ liệu vật lý mặc định nvarchar(400) (TConst.BizMix.Default_DBColType).
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSpecCustomFieldAsync(SpecCustomField f)
+    {
+        if (string.IsNullOrWhiteSpace(f.Code)) return "Mã Trường tùy chỉnh không hợp lệ.";
+        if (string.IsNullOrWhiteSpace(f.Name)) return "Tên Trường tùy chỉnh không hợp lệ.";
+        f.Code = f.Code.Trim(); f.Name = f.Name.Trim();
+
+        var dupCode = await db.SpecCustomFields.AnyAsync(x => x.Code == f.Code && x.Id != f.Id);
+        if (dupCode) return $"Mã Trường tùy chỉnh '{f.Code}' đã tồn tại.";
+
+        // Mst_SpecCustomField_Create: DBPhysicalType mặc định nvarchar(400).
+        if (string.IsNullOrWhiteSpace(f.DBPhysicalType)) f.DBPhysicalType = "nvarchar(400)";
+
+        SpecCustomField target;
+        if (f.Id > 0)
+        {
+            target = await db.SpecCustomFields.FirstOrDefaultAsync(x => x.Id == f.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy thông tin Trường tùy chỉnh.");
+            target.Name = f.Name; target.NetworkId = f.NetworkId; target.DBPhysicalType = f.DBPhysicalType;
+            target.Remark = f.Remark; target.Active = f.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = f;
+            db.SpecCustomFields.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecCustomField_CheckDB): trường tùy chỉnh phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteSpecCustomFieldAsync(int id)
+    {
+        var f = await db.SpecCustomFields.FirstOrDefaultAsync(x => x.Id == id);
+        if (f == null) return "Không tìm thấy thông tin Trường tùy chỉnh.";
+        db.SpecCustomFields.Remove(f);
         await db.SaveChangesAsync();
         return null;
     }

@@ -119,13 +119,21 @@ public static class Seeder
                 new SpecUnit { SpecCode = "QUAN-001-DENIM-32", UnitCode = "CAI", StandardUnitCode = "CAI", Description = "Bán lẻ theo cái", Qty = 1, Weight = 0.6m });
             await db.SaveChangesAsync();
         }
+        if (!await db.SpecCustomFields.AnyAsync())
+        {
+            db.SpecCustomFields.AddRange(
+                new SpecCustomField { Code = "SCF001", Name = "Chất liệu vải", DBPhysicalType = "nvarchar(400)", Remark = "Thành phần chất liệu của quy cách" },
+                new SpecCustomField { Code = "SCF002", Name = "Xuất xứ", DBPhysicalType = "nvarchar(400)" },
+                new SpecCustomField { Code = "SCF003", Name = "Trọng lượng (g)", DBPhysicalType = "decimal(18,3)", Remark = "Khối lượng tịnh" });
+            await db.SaveChangesAsync();
+        }
     }
 
     private static async Task MigratePostgresAsync(AppDbContext db)
     {
         if (!db.Database.IsNpgsql()) return;
         var def = TenantContext.DefaultOrgId;
-        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes", "SpecUnits" };
+        var tables = new[] { "Groups", "Products", "Attributes", "BomLines", "AttributeDefs", "Specs", "SpecPrices", "Units", "VatRates", "Brands", "Models", "ProductTypes", "CurrencyExes", "SpecUnits", "SpecCustomFields" };
         var sql = new List<string>
         {
             "CREATE TABLE IF NOT EXISTS minipim.\"Orgs\" (\"Id\" uuid PRIMARY KEY, \"Name\" text NOT NULL DEFAULT '', \"ApiKey\" text NOT NULL DEFAULT '', \"CreatedAt\" timestamp NOT NULL DEFAULT now())",

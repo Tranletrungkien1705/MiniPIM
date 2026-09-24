@@ -115,6 +115,18 @@ public interface IProductService
     Task<string?> SaveProductCustomFieldAsync(ProductCustomField f);
     Task<string?> DeleteProductCustomFieldAsync(int id);
 
+    // --- Ảnh quy cách (Mst_SpecImage) ---
+    Task<List<SpecImage>> SpecImagesAsync(string? specCode);
+    Task<SpecImage?> GetSpecImageAsync(int id);
+    Task<string?> SaveSpecImageAsync(SpecImage img);
+    Task<string?> DeleteSpecImageAsync(int id);
+
+    // --- Tệp đính kèm quy cách (Mst_SpecFiles) ---
+    Task<List<SpecFile>> SpecFilesAsync(string? specCode);
+    Task<SpecFile?> GetSpecFileAsync(int id);
+    Task<string?> SaveSpecFileAsync(SpecFile f);
+    Task<string?> DeleteSpecFileAsync(int id);
+
     // --- Mã hàng hóa người dùng (Mst_Product.ProductCodeUser) ---
     Task<Product?> GetByCodeUserAsync(string codeUser);
     Task<string?> ValidateProductCodeUserAsync(Product p);
@@ -1273,6 +1285,128 @@ public class ProductService(AppDbContext db) : IProductService
         var f = await db.ProductCustomFields.FirstOrDefaultAsync(x => x.Id == id);
         if (f == null) return "Không tìm thấy chi tiết Thông tin động của Hàng hóa.";
         db.ProductCustomFields.Remove(f);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Ảnh quy cách (Mst_SpecImage) ---
+    public async Task<List<SpecImage>> SpecImagesAsync(string? specCode)
+    {
+        var query = db.SpecImages.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(specCode)) query = query.Where(i => i.SpecCode == specCode);
+        return await query.OrderBy(i => i.SpecCode).ThenBy(i => i.Id).ToListAsync();
+    }
+
+    public Task<SpecImage?> GetSpecImageAsync(int id) => db.SpecImages.FirstOrDefaultAsync(i => i.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Spec_Add / Mst_Spec_Upd — phần Mst_SpecImage):
+    /// ảnh phải thuộc một Quy cách tồn tại (SpecCode bắt buộc —
+    /// Mst_Spec_Add_Input_Mst_SpecImageTblNotFound / Mst_Spec_Upd_Input_Mst_SpecImageTblNotFound),
+    /// đường dẫn ảnh bắt buộc, mỗi quy cách chỉ có tối đa 1 ảnh chính (FlagPrimaryImage).
+    /// Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSpecImageAsync(SpecImage img)
+    {
+        if (string.IsNullOrWhiteSpace(img.SpecCode)) return "Cần chọn Quy cách cho Ảnh.";
+        img.SpecCode = img.SpecCode.Trim();
+        if (!await db.Specs.AnyAsync(s => s.Code == img.SpecCode))
+            return $"Không tìm thấy Quy cách '{img.SpecCode}'.";
+        if (string.IsNullOrWhiteSpace(img.ImagePath)) return "Đường dẫn Ảnh không hợp lệ.";
+        img.ImagePath = img.ImagePath.Trim();
+        img.ImageName = string.IsNullOrWhiteSpace(img.ImageName) ? null : img.ImageName.Trim();
+        img.NetworkId = string.IsNullOrWhiteSpace(img.NetworkId) ? null : img.NetworkId.Trim();
+
+        // Mỗi quy cách chỉ có tối đa 1 ảnh chính.
+        if (img.FlagPrimaryImage)
+        {
+            var others = await db.SpecImages.Where(x => x.SpecCode == img.SpecCode && x.Id != img.Id && x.FlagPrimaryImage).ToListAsync();
+            foreach (var o in others) o.FlagPrimaryImage = false;
+        }
+
+        SpecImage target;
+        if (img.Id > 0)
+        {
+            target = await db.SpecImages.FirstOrDefaultAsync(x => x.Id == img.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy Ảnh của Quy cách.");
+            target.NetworkId = img.NetworkId; target.ImagePath = img.ImagePath;
+            target.ImageName = img.ImageName; target.ImageDesc = img.ImageDesc;
+            target.FlagPrimaryImage = img.FlagPrimaryImage; target.Active = img.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = img;
+            db.SpecImages.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecImage): ảnh quy cách phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteSpecImageAsync(int id)
+    {
+        var img = await db.SpecImages.FirstOrDefaultAsync(x => x.Id == id);
+        if (img == null) return "Không tìm thấy Ảnh của Quy cách.";
+        db.SpecImages.Remove(img);
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    // --- Tệp đính kèm quy cách (Mst_SpecFiles) ---
+    public async Task<List<SpecFile>> SpecFilesAsync(string? specCode)
+    {
+        var query = db.SpecFiles.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(specCode)) query = query.Where(f => f.SpecCode == specCode);
+        return await query.OrderBy(f => f.SpecCode).ThenBy(f => f.Id).ToListAsync();
+    }
+
+    public Task<SpecFile?> GetSpecFileAsync(int id) => db.SpecFiles.FirstOrDefaultAsync(f => f.Id == id);
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_Spec_Add / Mst_Spec_Upd — phần Mst_SpecFiles):
+    /// tệp phải thuộc một Quy cách tồn tại (SpecCode bắt buộc —
+    /// Mst_Spec_Add_Input_Mst_SpecFilesTblNotFound / Mst_Spec_Upd_Input_Mst_SpecFilesTblNotFound),
+    /// đường dẫn tệp bắt buộc. Trả về thông báo lỗi hoặc null nếu OK.
+    /// </summary>
+    public async Task<string?> SaveSpecFileAsync(SpecFile f)
+    {
+        if (string.IsNullOrWhiteSpace(f.SpecCode)) return "Cần chọn Quy cách cho File đính kèm.";
+        f.SpecCode = f.SpecCode.Trim();
+        if (!await db.Specs.AnyAsync(s => s.Code == f.SpecCode))
+            return $"Không tìm thấy Quy cách '{f.SpecCode}'.";
+        if (string.IsNullOrWhiteSpace(f.FilePath)) return "Đường dẫn File đính kèm không hợp lệ.";
+        f.FilePath = f.FilePath.Trim();
+        f.FileName = string.IsNullOrWhiteSpace(f.FileName) ? null : f.FileName.Trim();
+        f.NetworkId = string.IsNullOrWhiteSpace(f.NetworkId) ? null : f.NetworkId.Trim();
+
+        SpecFile target;
+        if (f.Id > 0)
+        {
+            target = await db.SpecFiles.FirstOrDefaultAsync(x => x.Id == f.Id)
+                ?? throw new InvalidOperationException("Không tìm thấy File đính kèm của Quy cách.");
+            target.NetworkId = f.NetworkId; target.FilePath = f.FilePath;
+            target.FileName = f.FileName; target.FileDesc = f.FileDesc;
+            target.Active = f.Active; target.UpdatedAt = DateTime.Now;
+        }
+        else
+        {
+            target = f;
+            db.SpecFiles.Add(target);
+        }
+        await db.SaveChangesAsync();
+        return null;
+    }
+
+    /// <summary>
+    /// Nghiệp vụ ProductCenter (Mst_SpecFiles): tệp đính kèm quy cách phải tồn tại mới cho xóa.
+    /// </summary>
+    public async Task<string?> DeleteSpecFileAsync(int id)
+    {
+        var f = await db.SpecFiles.FirstOrDefaultAsync(x => x.Id == id);
+        if (f == null) return "Không tìm thấy File đính kèm của Quy cách.";
+        db.SpecFiles.Remove(f);
         await db.SaveChangesAsync();
         return null;
     }

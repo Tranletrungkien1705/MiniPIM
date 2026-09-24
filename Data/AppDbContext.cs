@@ -29,6 +29,8 @@ public class AppDbContext : DbContext
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<ProductFile> ProductFiles => Set<ProductFile>();
     public DbSet<ProductCustomField> ProductCustomFields => Set<ProductCustomField>();
+    public DbSet<SpecImage> SpecImages => Set<SpecImage>();
+    public DbSet<SpecFile> SpecFiles => Set<SpecFile>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -158,6 +160,16 @@ public class AppDbContext : DbContext
         b.Entity<ProductCustomField>(e =>
         {
             e.HasIndex(x => new { x.OrgId, x.Code }).IsUnique();
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SpecImage>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.SpecCode });
+            e.HasQueryFilter(x => x.OrgId == _orgId);
+        });
+        b.Entity<SpecFile>(e =>
+        {
+            e.HasIndex(x => new { x.OrgId, x.SpecCode });
             e.HasQueryFilter(x => x.OrgId == _orgId);
         });
     }

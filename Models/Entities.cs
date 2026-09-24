@@ -423,3 +423,40 @@ public class ProductCustomField : IOrgOwned
     public bool Active { get; set; } = true;        // FlagActive
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
+
+/// <summary>
+/// Ảnh của quy cách (Mst_SpecImage của ProductCenter) — một quy cách (Mst_Spec) có nhiều ảnh,
+/// mỗi ảnh có đường dẫn (SpecImagePath), tên (SpecImageName), mô tả (SpecImageDesc) và cờ
+/// ảnh chính (FlagPrimaryImage). SpecCode là khóa nghiệp vụ trỏ tới Quy cách (Mst_Spec).
+/// </summary>
+public class SpecImage : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string SpecCode { get; set; } = "";     // SpecCode — quy cách (Mst_Spec)
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? ImagePath { get; set; }          // SpecImagePath — đường dẫn ảnh
+    public string? ImageName { get; set; }          // SpecImageName — tên ảnh
+    public string? ImageDesc { get; set; }          // SpecImageDesc — mô tả ảnh
+    public bool FlagPrimaryImage { get; set; }      // FlagPrimaryImage — ảnh chính
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// Tệp/tài liệu đính kèm của quy cách (Mst_SpecFiles của ProductCenter) — một quy cách (Mst_Spec)
+/// có nhiều tệp (bản vẽ, hướng dẫn, chứng từ), mỗi tệp có đường dẫn (SpecFilePath), tên
+/// (SpecFileName) và mô tả (SpecFileDesc). SpecCode là khóa nghiệp vụ trỏ tới Quy cách (Mst_Spec).
+/// </summary>
+public class SpecFile : IOrgOwned
+{
+    public int Id { get; set; }
+    public Guid OrgId { get; set; }
+    public string SpecCode { get; set; } = "";     // SpecCode — quy cách (Mst_Spec)
+    public string? NetworkId { get; set; }          // NetworkID — mã dùng chung network
+    public string? FilePath { get; set; }           // SpecFilePath — đường dẫn tệp
+    public string? FileName { get; set; }           // SpecFileName — tên tệp
+    public string? FileDesc { get; set; }           // SpecFileDesc — mô tả tệp
+    public bool Active { get; set; } = true;        // FlagActive
+    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+}

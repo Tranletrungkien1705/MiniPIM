@@ -693,6 +693,83 @@ public class ProductCustomFieldController(IProductService svc) : Controller
     }
 }
 
+public class SpecImageController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? specCode)
+    {
+        ViewBag.SpecCode = specCode;
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        return View(await svc.SpecImagesAsync(specCode));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        var img = id.HasValue ? await svc.GetSpecImageAsync(id.Value) : new SpecImage();
+        if (img == null) return NotFound();
+        return View(img);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string specCode, string? networkId, string? imagePath,
+        string? imageName, string? imageDesc, bool flagPrimaryImage, bool active)
+    {
+        var img = new SpecImage { Id = id, SpecCode = specCode ?? "", NetworkId = networkId,
+            ImagePath = imagePath, ImageName = imageName, ImageDesc = imageDesc,
+            FlagPrimaryImage = flagPrimaryImage, Active = active };
+        var err = await svc.SaveSpecImageAsync(img);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu ảnh quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? specCode)
+    {
+        var err = await svc.DeleteSpecImageAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa ảnh quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+}
+
+public class SpecFileController(IProductService svc) : Controller
+{
+    public async Task<IActionResult> Index(string? specCode)
+    {
+        ViewBag.SpecCode = specCode;
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        return View(await svc.SpecFilesAsync(specCode));
+    }
+
+    public async Task<IActionResult> Edit(int? id)
+    {
+        ViewBag.Specs = await svc.SpecsAsync(null);
+        var f = id.HasValue ? await svc.GetSpecFileAsync(id.Value) : new SpecFile();
+        if (f == null) return NotFound();
+        return View(f);
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Save(int id, string specCode, string? networkId, string? filePath,
+        string? fileName, string? fileDesc, bool active)
+    {
+        var f = new SpecFile { Id = id, SpecCode = specCode ?? "", NetworkId = networkId,
+            FilePath = filePath, FileName = fileName, FileDesc = fileDesc, Active = active };
+        var err = await svc.SaveSpecFileAsync(f);
+        if (err != null) { TempData["Error"] = err; return RedirectToAction(nameof(Edit), new { id = id > 0 ? id : (int?)null }); }
+        TempData["Success"] = "Đã lưu file đính kèm quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id, string? specCode)
+    {
+        var err = await svc.DeleteSpecFileAsync(id);
+        if (err != null) TempData["Error"] = err; else TempData["Success"] = "Đã xóa file đính kèm quy cách.";
+        return RedirectToAction(nameof(Index), new { specCode });
+    }
+}
+
 public class MasterCheckController(IProductService svc) : Controller
 {
     public async Task<IActionResult> Index()
@@ -700,7 +777,6 @@ public class MasterCheckController(IProductService svc) : Controller
         return View(await svc.AuditMasterAsync());
     }
 }
-
 /// <summary>
 /// Phân cấp hàng hóa (Mst_Product: Root / Base / L2) — nguồn 2019.4.ProductCenter.
 /// Một hàng gốc (Root) chứa nhiều hàng cơ sở (Base); mỗi hàng cơ sở lại chứa nhiều

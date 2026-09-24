@@ -1,0 +1,36 @@
+@model SpecImage
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Sửa ảnh quy cách" : "Thêm ảnh quy cách";
+    var specs = ViewBag.Specs as List<Spec> ?? new();
+}
+<div class="row g-3">
+    <div class="col-lg-6"><div class="card"><div class="card-body">
+        <h6 class="fw-bold mb-3">@ViewData["Title"]</h6>
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="mb-2">
+                <label class="form-label small text-muted">Quy cách *</label>
+                <select name="specCode" class="form-select" required @(Model.Id > 0 ? "disabled" : "")>
+                    <option value="">— Chọn quy cách —</option>
+                    @foreach (var s in specs) { <option value="@s.Code" selected="@(s.Code == Model.SpecCode)">@s.Code — @s.Name</option> }
+                </select>
+                @if (Model.Id > 0) { <input type="hidden" name="specCode" value="@Model.SpecCode" /> }
+            </div>
+            <div class="mb-2"><label class="form-label small text-muted">Đường dẫn ảnh *</label><input name="imagePath" value="@Model.ImagePath" class="form-control" required /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Tên ảnh</label><input name="imageName" value="@Model.ImageName" class="form-control" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Mô tả</label><input name="imageDesc" value="@Model.ImageDesc" class="form-control" /></div>
+            <div class="mb-2"><label class="form-label small text-muted">Network ID</label><input name="networkId" value="@Model.NetworkId" class="form-control" /></div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="flagPrimaryImage" value="true" id="primary" @(Model.FlagPrimaryImage ? "checked" : "") />
+                <label class="form-check-label" for="primary">Ảnh chính</label>
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="active" value="true" id="active" @(Model.Active ? "checked" : "") />
+                <label class="form-check-label" for="active">Đang dùng</label>
+            </div>
+            <button class="btn btn-primary"><i class="bi bi-save me-1"></i>Lưu</button>
+            <a class="btn btn-outline-secondary" href="/SpecImage">Hủy</a>
+        </form>
+    </div></div></div>
+</div>

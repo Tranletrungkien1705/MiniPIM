@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniPIM — Thành phần hàng hoá (BOM)</title>
+<style>
+  :root{color-scheme:light dark;--line:#8883;--accent:#4f46e5}
+  *{box-sizing:border-box} body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:1120px;margin:24px auto;padding:0 16px;line-height:1.5}
+  h1{font-size:20px;margin:0 0 2px} .muted{opacity:.65;font-size:13px}
+  input,button,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;width:100%}
+  button{cursor:pointer;width:auto} button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bar{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+  th{opacity:.7;font-size:11px;text-transform:uppercase}
+  td.num{text-align:right} td.num input{text-align:right;width:90px}
+  .del{color:#dc2626;cursor:pointer} .err{color:#dc2626} .ok{color:#16a34a}
+  #msg{min-height:18px;font-size:13px} .tblwrap{overflow-x:auto}
+  #sug{border:1px solid var(--line);border-radius:8px;margin-top:4px;max-height:220px;overflow:auto}
+  #sug div{padding:6px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--line)}
+  #sug div:hover{background:#8881}
+  tfoot td{font-weight:600}
+</style></head>
+<body>
+<h1>Thành phần hàng hoá <span class="muted">(port 1:1 ProductIngredient.cshtml — Prd_BOM)</span></h1>
+<div class="muted">Nguồn: <code>2019.4.ProductCenter/Dev/V20/ProductCenter.Web/Views/Mst_Product/ProductIngredient.cshtml</code>
+ · autocomplete theo <code>Mst_ProductController.Search_Product_Auto</code> (:469-537, tối đa 10 dòng)</div>
+
+<div class="bar">
+  <input id="code" placeholder="Mã thành phẩm (ProductCodeRoot)" style="width:auto;flex:1">
+  <button class="primary" onclick="load()">Nạp lưới</button>
+  <button onclick="save()">Lưu lưới</button>
+  <span id="msg"></span>
+</div>
+
+<div class="bar">
+  <input id="myInput" placeholder="Nhập mã hàng hoặc tên hàng để tìm kiếm" oninput="goi()" autocomplete="off">
+</div>
+<div id="sug" hidden></div>
+
+<div class="tblwrap"><table>
+<thead><tr><th></th><th>TT</th><th>Mã hàng</th><th>Tên hàng</th><th>Số lượng</th>
+  <th>Giá mua</th><th>Tổng tiền mua</th><th>Giá bán</th><th>Tổng tiền bán</th></tr></thead>
+<tbody id="rows"><tr><td colspan="9" class="muted">Đang tải…</td></tr></tbody>
+<tfoot><tr><td colspan="6" style="text-align:right">Tổng</td>
+  <td class="num" id="sumBuy">0</td><td></td><td class="num" id="sumSell">0</td></tr></tfoot>
+</table></div>
+
+<div class="muted" style="margin-top:12px">
+ Tổng tiền mua = <code>mp_UPBuy × Qty</code>, Tổng tiền bán = <code>mp_UPSell × Qty</code>
+ (công thức nguồn <code>ProductIngredient.cshtml:95-96</code>). Giá thành phần LUÔN đọc lại từ danh mục
+ khi lưu, không tin số phía trình duyệt gửi lên.
+</div>
+
+<script>
+const F = id => document.getElementById(id);
+const N = v => (v == null ? "0" : Number(v).toLocaleString("vi-VN"));
+let LUOI = [];      // các dòng BOM đang hiển thị
+function msg(t, ok) { const m = F("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function ve() {
+  F("rows").innerHTML = LUOI.length ? LUOI.map((x, i) => `<tr>
+    <td class="del" onclick="xoa(${i})" title="Xoá dòng">&#10005;</td>
+    <td>${i + 1}</td><td><b>${esc(x.ma)}</b></td><td>${esc(x.ten)}</td>
+    <td class="num"><input type="number" step="0.001" min="0" value="${x.qty}" oninput="doiQty(${i}, this.value)"></td>
+    <td class="num">${N(x.upBuy)}</td><td class="num">${N(x.upBuy * x.qty)}</td>
+    <td class="num">${N(x.upSell)}</td><td class="num">${N(x.upSell * x.qty)}</td></tr>`).join("")
+    : '<tr><td colspan="9" class="muted">Chưa có thành phần nào.</td></tr>';
+  F("sumBuy").textContent = N(LUOI.reduce((s, x) => s + x.upBuy * x.qty, 0));
+  F("sumSell").textContent = N(LUOI.reduce((s, x) => s + x.upSell * x.qty, 0));
+}
+function doiQty(i, v) { LUOI[i].qty = Number(v) || 0; ve(); }
+function xoa(i) { LUOI.splice(i, 1); ve(); }
+
+async function load() {
+  const code = F("code").value.trim();
+  if (!code) return msg("Cần mã thành phẩm.");
+  try {
+    const r = await fetch("/api/pc/productingredient/" + encodeURIComponent(code));
+    const d = await r.json();
+    if (!r.ok) { LUOI = []; ve(); return msg(d.error || "Không nạp được."); }
+    LUOI = (d.listBOM || []).map(b => ({
+      ma: b.productCode, ten: b.mp_ProductName,
+      qty: Number(b.qty) || 0, upBuy: Number(b.mp_UPBuy) || 0, upSell: Number(b.mp_UPSell) || 0
+    }));
+    ve(); msg("Đã nạp " + LUOI.length + " thành phần của " + (d.productName || code) + ".", true);
+  } catch (e) { msg("Lỗi: " + e.message); }
+}
+
+let hen = null;
+function goi() { clearTimeout(hen); hen = setTimeout(tim, 250); }
+async function tim() {
+  const k = F("myInput").value.trim();
+  if (!k) { F("sug").hidden = true; return; }     // nguồn :482 chỉ gọi khi có keyword
+  try {
+    const d = await (await fetch("/api/pc/searchproductauto?productcodename=" + encodeURIComponent(k))).json();
+    const ds = d.listProduct || [];
+    F("sug").hidden = ds.length === 0;
+    F("sug").innerHTML = ds.map(x =>
+      `<div onclick='them(${JSON.stringify(x).replace(/'/g, "&#39;")})'>${esc(x.productCodeUser || x.productCode)} — ${esc(x.productName)}</div>`).join("");
+  } catch (e) { msg("Lỗi tìm kiếm: " + e.message); }
+}
+
+// Guard CẤM TRÙNG — port 1:1 CheckProductTable (ProductIngredient.cshtml:359-390),
+// kèm đúng câu thông báo của nguồn ở dòng :379.
+function them(x) {
+  F("sug").hidden = true; F("myInput").value = "";
+  if (LUOI.some(r => r.ma === x.productCode))
+    return msg('Hàng "' + x.productName + '" đã tồn tại trên lưới!');
+  if (x.productCode === F("code").value.trim())
+    return msg("Không được đưa chính hàng hoá này vào lưới thành phần.");
+  // QtyEffSt null ⇒ mặc định 1 (ProductIngredient.cshtml:398-403).
+  LUOI.push({ ma: x.productCode, ten: x.productName, qty: Number(x.qtyEffSt) || 1,
+              upBuy: Number(x.uPBuy) || 0, upSell: Number(x.uPSell) || 0 });
+  ve(); msg("Đã thêm " + x.productName + ".", true);
+}
+
+async function save() {
+  const code = F("code").value.trim();
+  if (!code) return msg("Cần mã thành phẩm.");
+  const body = { productCode: code, listBOM: LUOI.map(x => ({ productCode: x.ma, productName: x.ten, qty: x.qty })) };
+  try {
+    const r = await fetch("/api/pc/productingredient",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) return msg(d.error || "Lưu thất bại.");
+    msg("Đã lưu " + (d.listBOM || []).length + " thành phần.", true);
+    load();
+  } catch (e) { msg("Lỗi: " + e.message); }
+}
+
+F("code").value = "COMBO-BD1"; load();
+</script>
+</body></html>

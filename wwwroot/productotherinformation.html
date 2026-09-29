@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniPIM — Thông tin khác của hàng hoá</title>
+<style>
+  :root{color-scheme:light dark;--line:#8883;--accent:#4f46e5}
+  *{box-sizing:border-box} body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:1020px;margin:24px auto;padding:0 16px;line-height:1.5}
+  h1{font-size:20px;margin:0 0 2px} .muted{opacity:.65;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+  label.f{display:block;font-size:12px;opacity:.75;margin-bottom:3px}
+  input,button,select,textarea{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;width:100%}
+  textarea{min-height:90px;resize:vertical}
+  button{cursor:pointer;width:auto} button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bar{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
+  .chk{display:flex;align-items:center;gap:5px;font-size:13px} .chk input{width:auto}
+  .tabs{display:flex;gap:6px;margin:16px 0 8px;border-bottom:1px solid var(--line)}
+  .tabs a{padding:7px 12px;cursor:pointer;font-size:13px;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0}
+  .tabs a.on{border-color:var(--line);background:#8881}
+  .err{color:#dc2626} .ok{color:#16a34a} #msg{min-height:18px;font-size:13px}
+</style></head>
+<body>
+<h1>Thông tin khác của hàng hoá <span class="muted">(port 1:1 ProductOtherInformation.cshtml — Mst_Product)</span></h1>
+<div class="muted">Nguồn: <code>2019.4.ProductCenter/Dev/V20/ProductCenter.Web/Views/Mst_Product/ProductOtherInformation.cshtml</code>
+ — 12 trường, 2 cờ, 3 tab văn bản</div>
+
+<div class="bar">
+  <input id="code" placeholder="Mã hàng (ProductCode / ProductCodeUser)" style="width:auto;flex:1">
+  <button class="primary" onclick="load()">Nạp</button>
+  <button onclick="save()">Lưu</button>
+  <span id="msg"></span>
+</div>
+
+<div class="grid">
+  <div><label class="f" for="ProductNameEN">Tên tiếng anh (ProductNameEN)</label><input id="ProductNameEN"></div>
+  <div><label class="f" for="ProductOrigin">Xuất xứ (ProductOrigin)</label><input id="ProductOrigin"></div>
+  <div><label class="f" for="ProductQuyCach">Quy cách (ProductQuyCach)</label><input id="ProductQuyCach"></div>
+  <div><label class="f" for="ProductStd">Tiêu chuẩn (ProductStd)</label><input id="ProductStd"></div>
+  <div><label class="f" for="ProductExpiry">Hạn sử dụng (ProductExpiry)</label><input id="ProductExpiry"></div>
+  <div><label class="f" for="ProductMnfUrl">Link quy trình XS (ProductMnfUrl)</label><input id="ProductMnfUrl"></div>
+</div>
+<div class="bar">
+  <label class="chk"><input type="checkbox" id="FlagSerial"> Quản lý Serial</label>
+  <label class="chk"><input type="checkbox" id="FlagLot"> Quản lý LOT</label>
+</div>
+
+<div class="tabs">
+  <a id="t1" class="on" onclick="tab(1)">Chi tiết sản phẩm</a>
+  <a id="t2" onclick="tab(2)">Hướng dẫn sử dụng</a>
+  <a id="t3" onclick="tab(3)">Bản vẽ</a>
+</div>
+<div id="p1"><textarea id="ProductIntro" placeholder="ProductIntro"></textarea></div>
+<div id="p2" hidden><textarea id="ProductUserGuide" placeholder="ProductUserGuide"></textarea></div>
+<div id="p3" hidden><textarea id="ProductDrawing" placeholder="ProductDrawing"></textarea></div>
+
+<div class="muted" style="margin-top:14px">Ô <b>Remark (Mô tả)</b> ở nguồn đang bị comment
+ (<code>ProductOtherInformation.cshtml:110-118</code>) nên KHÔNG hiển thị ở đây; API vẫn đọc/ghi được
+ để không mất dữ liệu (đích lưu ở cột <code>Description</code>).</div>
+
+<script>
+const F = id => document.getElementById(id);
+function msg(t, ok) { const m = F("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; }
+function tab(n) {
+  for (let i = 1; i <= 3; i++) { F("t" + i).className = i === n ? "on" : ""; F("p" + i).hidden = i !== n; }
+}
+const TXT = ["ProductNameEN", "ProductStd", "ProductOrigin", "ProductExpiry", "ProductQuyCach",
+             "ProductMnfUrl", "ProductIntro", "ProductUserGuide", "ProductDrawing"];
+
+async function load() {
+  const code = F("code").value.trim();
+  if (!code) return msg("Cần mã hàng.");
+  try {
+    const r = await fetch("/api/pc/productotherinformation/" + encodeURIComponent(code));
+    const d = await r.json();
+    if (!r.ok) return msg(d.error || "Không nạp được.");
+    TXT.forEach(k => F(k).value = d[k[0].toLowerCase() + k.slice(1)] || "");
+    F("FlagSerial").checked = d.flagSerial === "1";
+    F("FlagLot").checked = d.flagLot === "1";
+    msg("Đã nạp " + (d.productName || code) + ".", true);
+  } catch (e) { msg("Lỗi: " + e.message); }
+}
+
+async function save() {
+  const code = F("code").value.trim();
+  if (!code) return msg("Cần mã hàng.");
+  const body = { code };
+  TXT.forEach(k => body[k] = F(k).value);
+  // Cờ nguồn là '1'/'0' (ProductOtherInformation.cshtml:38,53), không phải true/false.
+  body.flagSerial = F("FlagSerial").checked ? "1" : "0";
+  body.flagLot = F("FlagLot").checked ? "1" : "0";
+  try {
+    const r = await fetch("/api/pc/productotherinformation",
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    msg(r.ok ? "Đã lưu thông tin khác." : (d.error || "Lưu thất bại."), r.ok);
+  } catch (e) { msg("Lỗi: " + e.message); }
+}
+
+F("code").value = "COMBO-BD1"; load();
+</script>
+</body></html>

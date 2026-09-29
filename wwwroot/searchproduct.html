@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniPIM — Tìm kiếm hàng hoá</title>
+<style>
+  :root{color-scheme:light dark;--line:#8883;--accent:#4f46e5}
+  *{box-sizing:border-box} body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:1180px;margin:24px auto;padding:0 16px;line-height:1.5}
+  h1{font-size:20px;margin:0 0 2px} .muted{opacity:.65;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+  input,button,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:inherit;width:100%}
+  button{cursor:pointer;width:auto} button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .bar{display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap}
+  .chk{display:flex;align-items:center;gap:5px;font-size:13px} .chk input{width:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+  th{opacity:.7;font-size:11px;text-transform:uppercase}
+  td.num{text-align:right} .err{color:#dc2626} .ok{color:#16a34a}
+  #msg{min-height:18px;font-size:13px} .tblwrap{overflow-x:auto}
+</style></head>
+<body>
+<h1>Tìm kiếm hàng hoá <span class="muted">(port 1:1 SearchProduct.cshtml — Mst_Product)</span></h1>
+<div class="muted">Nguồn: <code>2019.4.ProductCenter/Dev/V20/ProductCenter.Web/Views/Mst_Product/SearchProduct.cshtml</code>
+ · điều kiện lọc theo <code>Mst_ProductController.cs:1183-1292</code> + <code>:4845-4922</code></div>
+
+<div class="grid">
+  <input id="q" placeholder="Mã hàng / Tên hàng">
+  <select id="grp"><option value="">Nhóm hàng hoá: —</option></select>
+  <input id="brand" placeholder="Nhãn hiệu (BrandCode)">
+  <input id="unit" placeholder="Đơn vị (UnitCode)">
+  <input id="lvl" placeholder="Cấp hệ thống (ProductLevelSys)">
+  <input id="ac" placeholder="Tìm nâng cao: tên thuộc tính">
+  <input id="av" placeholder="Tìm nâng cao: giá trị thuộc tính">
+  <input id="rc" type="number" value="100" placeholder="Số bản ghi">
+</div>
+<div class="bar">
+  <!-- 3 checkbox nguồn: ProductIngredient.cshtml:236-246 -> ProductType in ('PRODUCT','SERVICE','COMBO') -->
+  <label class="chk"><input type="checkbox" id="ckbProduct"> Sản phẩm</label>
+  <label class="chk"><input type="checkbox" id="ckbServices"> Dịch vụ</label>
+  <label class="chk"><input type="checkbox" id="ckbCombo"> Combo</label>
+  <button class="primary" onclick="load()">Tìm kiếm</button>
+  <button onclick="chon()">Chọn</button>
+  <span id="msg"></span>
+</div>
+<div class="muted">Không tick checkbox nào ⇒ nguồn tự ép <code>FlagActive='1'</code> (chỉ hàng còn hiệu lực)
+ — <code>Mst_ProductController.cs:1240-1243</code>.</div>
+
+<div class="tblwrap"><table>
+<thead><tr>
+  <th><input type="checkbox" id="all" onclick="checkAll(this)" style="width:auto"></th>
+  <th>STT</th><th>Mã hàng</th><th>Tên hàng</th><th>Loại hàng</th><th>Nhóm hàng</th>
+  <th>Nhãn hiệu</th><th>Đơn vị</th><th>Được mua</th><th>Được bán</th><th>Giá mua</th><th>Giá bán</th>
+</tr></thead>
+<tbody id="rows"><tr><td colspan="12" class="muted">Đang tải…</td></tr></tbody></table></div>
+
+<script>
+const F = id => document.getElementById(id);
+const N = v => (v == null ? "" : Number(v).toLocaleString("vi-VN"));
+function msg(t, ok) { const m = F("msg"); m.textContent = t; m.className = ok ? "ok" : "err"; }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+async function groups() {
+  try {
+    const d = await (await fetch("/api/v1/groups")).json();
+    F("grp").innerHTML = '<option value="">Nhóm hàng hoá: —</option>'
+      + d.map(g => `<option value="${esc(g.code)}">${esc(g.name)}</option>`).join("");
+  } catch (e) { msg("Không nạp được nhóm hàng: " + e.message); }
+}
+
+async function load() {
+  const p = new URLSearchParams({
+    productCodeUserName: F("q").value, productGrpCode: F("grp").value,
+    brandCode: F("brand").value, unitCode: F("unit").value, productLevelSys: F("lvl").value,
+    ckbProduct: F("ckbProduct").checked ? "1" : "", ckbServices: F("ckbServices").checked ? "1" : "",
+    ckbCombo: F("ckbCombo").checked ? "1" : "",
+    attributeCode: F("ac").value, attributeValue: F("av").value, recordCount: F("rc").value || "100"
+  });
+  try {
+    const d = await (await fetch("/api/pc/searchproduct?" + p)).json();
+    F("rows").innerHTML = (d.items || []).map(x => `<tr>
+      <td><input type="checkbox" class="ck" value="${esc(x.productCode)}" style="width:auto"></td>
+      <td>${x.stt}</td><td><b>${esc(x.productCodeUser || x.productCode)}</b></td><td>${esc(x.productName)}</td>
+      <td>${esc(x.productType)}</td><td>${esc(x.productGrpName || x.productGrpCode)}</td>
+      <td>${esc(x.brandCode)}</td><td>${esc(x.unitCode)}</td>
+      <td>${x.flagBuy === "1" ? "Có" : "Không"}</td><td>${x.flagSell === "1" ? "Có" : "Không"}</td>
+      <td class="num">${N(x.uPBuy)}</td><td class="num">${N(x.uPSell)}</td></tr>`).join("")
+      || '<tr><td colspan="12" class="muted">Không có hàng hoá khớp điều kiện.</td></tr>';
+    msg("Tìm thấy " + (d.itemCount || 0) + " dòng.", true);
+  } catch (e) { msg("Lỗi: " + e.message); }
+}
+
+function checkAll(el) { document.querySelectorAll("#rows .ck").forEach(c => c.checked = el.checked); }
+function chon() {
+  const ds = [...document.querySelectorAll("#rows .ck:checked")].map(c => c.value);
+  msg(ds.length ? "Đã chọn: " + ds.join(", ") : "Chưa chọn dòng nào.", ds.length > 0);
+}
+groups(); load();
+</script>
+</body></html>

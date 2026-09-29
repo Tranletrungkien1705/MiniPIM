@@ -9,6 +9,7 @@ public static class Seeder
     {
         await db.Database.EnsureCreatedAsync();
         await MigratePostgresAsync(db);
+        await MigrateCotProductCenterAsync(db);
 
         if (!await db.Orgs.AnyAsync(o => o.Id == TenantContext.DefaultOrgId))
         {
@@ -49,6 +50,10 @@ public static class Seeder
                     Code = it.code, Name = it.name, GroupId = GId(it.grp), Uom = it.uom, CostPrice = it.cost, SalePrice = it.sale,
                     Barcode = "893" + Math.Abs(it.code.GetHashCode()).ToString().PadLeft(10, '0')[..10],
                     Description = $"Phụ tùng chính hãng — {it.name}",
+                    // Cột port 1:1 Mst_Product: mã người dùng = mã hệ thống, hàng lẻ là PRODUCT, cấp gốc ROOTPRD.
+                    CodeUser = it.code, ProductType = "PRODUCT", LevelSys = "ROOTPRD",
+                    CodeBase = it.code, CodeRoot = it.code, QtyEffSt = 1,
+                    NameEn = it.name, Origin = "Hàn Quốc", Std = "OEM",
                     Attributes = it.attrs.Select(a => new ProductAttribute { Name = a.k, Value = a.v }).ToList()
                 });
             // 1 sản phẩm có BOM (bộ bảo dưỡng cấp 1 = gói combo).
@@ -56,15 +61,80 @@ public static class Seeder
             {
                 Code = "COMBO-BD1", Name = "Gói bảo dưỡng cấp 1", GroupId = GId("BDG"), Uom = "gói", CostPrice = 300_000, SalePrice = 520_000,
                 Description = "Gói combo bảo dưỡng định kỳ 5.000km",
+                // ProductType = COMBO: 1 trong 3 giá trị của ô tìm nguồn (Mst_ProductController.cs:1218-1229).
+                CodeUser = "COMBO-BD1", ProductType = "COMBO", LevelSys = "ROOTPRD",
+                CodeBase = "COMBO-BD1", CodeRoot = "COMBO-BD1", QtyEffSt = 1,
                 Bom =
                 [
-                    new() { ComponentCode = "PT-LOC-DAU", ComponentName = "Lọc dầu động cơ", Quantity = 1, Uom = "cái" },
-                    new() { ComponentCode = "PT-DAU-NHOT", ComponentName = "Dầu nhớt 5W-30", Quantity = 4, Uom = "lít" },
-                    new() { ComponentCode = "PT-LOC-GIO", ComponentName = "Lọc gió động cơ", Quantity = 1, Uom = "cái" },
+                    // ComponentCostPrice/ComponentSalePrice = mp_UPBuy/mp_UPSell — giá của THÀNH PHẦN,
+                    // nguồn đọc kèm khi join Mst_Product (ProductIngredient.cshtml:107,109).
+                    new() { ComponentCode = "PT-LOC-DAU", ComponentName = "Lọc dầu động cơ", Quantity = 1, Uom = "cái",
+                            ComponentCostPrice = 85_000, ComponentSalePrice = 150_000, ParentCodeRoot = "COMBO-BD1" },
+                    new() { ComponentCode = "PT-DAU-NHOT", ComponentName = "Dầu nhớt 5W-30", Quantity = 4, Uom = "lít",
+                            ComponentCostPrice = 130_000, ComponentSalePrice = 210_000, ParentCodeRoot = "COMBO-BD1" },
+                    new() { ComponentCode = "PT-LOC-GIO", ComponentName = "Lọc gió động cơ", Quantity = 1, Uom = "cái",
+                            ComponentCostPrice = 120_000, ComponentSalePrice = 220_000, ParentCodeRoot = "COMBO-BD1" },
                 ]
             });
             await db.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// ALTER thêm các cột port 1:1 từ 2019.4.ProductCenter (bảng Mst_Product, Prd_BOM).
+    /// Vì app dùng <c>EnsureCreated</c> (không migration), DB đã tạo trước sẽ KHÔNG tự có cột mới
+    /// ⇒ phải ALTER tay. SQLite không có "ADD COLUMN IF NOT EXISTS" nên bọc try/catch từng câu,
+    /// đúng kiểu đã dùng ở <see cref="MigratePostgresAsync"/>:81.
+    /// Lưu ý: SQL ở đây KHÔNG được chứa ký tự { } vì ExecuteSqlRaw coi đó là placeholder tham số.
+    /// </summary>
+    private static async Task MigrateCotProductCenterAsync(AppDbContext db)
+    {
+        var pg = db.Database.IsNpgsql();
+        string Bang(string t) => pg ? $"minipim.\"{t}\"" : $"\"{t}\"";
+        string Txt = pg ? "text" : "TEXT";
+        string Num = pg ? "numeric(18,3)" : "TEXT";          // SQLite lưu decimal dạng TEXT theo mặc định EF
+        string Tien = pg ? "numeric(18,2)" : "TEXT";
+
+        // Mst_Product — tên cột nguồn ghi ngay trong comment để tra ngược Const.Main.cs:1096-1141.
+        var cotProduct = new (string ten, string kieu, string mac_dinh)[]
+        {
+            ("CodeUser",     Txt,  ""),          // ProductCodeUser
+            ("ProductType",  Txt,  ""),          // ProductType (PRODUCT/SERVICE/COMBO)
+            ("BrandCode",    Txt,  ""),          // BrandCode
+            ("LevelSys",     Txt,  ""),          // ProductLevelSys
+            ("CodeBase",     Txt,  ""),          // ProductCodeBase
+            ("CodeRoot",     Txt,  ""),          // ProductCodeRoot
+            ("FlagBuy",      Txt,  " NOT NULL DEFAULT '1'"),   // FlagBuy  — cờ '1'/'0'
+            ("FlagSell",     Txt,  " NOT NULL DEFAULT '1'"),   // FlagSell — cờ '1'/'0'
+            ("QtyEffSt",     Num,  ""),          // QtyEffSt
+            ("NameEn",       Txt,  ""),          // ProductNameEN
+            ("Std",          Txt,  ""),          // ProductStd
+            ("Origin",       Txt,  ""),          // ProductOrigin
+            ("Expiry",       Txt,  ""),          // ProductExpiry
+            ("QuyCach",      Txt,  ""),          // ProductQuyCach
+            ("MnfUrl",       Txt,  ""),          // ProductMnfUrl
+            ("Intro",        Txt,  ""),          // ProductIntro
+            ("UserGuide",    Txt,  ""),          // ProductUserGuide
+            ("Drawing",      Txt,  ""),          // ProductDrawing
+            ("FlagSerial",   Txt,  " NOT NULL DEFAULT '0'"),   // FlagSerial
+            ("FlagLot",      Txt,  " NOT NULL DEFAULT '0'"),   // FlagLot
+        };
+        // Prd_BOM
+        var cotBom = new (string ten, string kieu, string mac_dinh)[]
+        {
+            ("ParentCodeRoot",     Txt,  ""),     // ProductCodeParent
+            ("ComponentCostPrice", Tien, " NOT NULL DEFAULT 0"),   // mp_UPBuy
+            ("ComponentSalePrice", Tien, " NOT NULL DEFAULT 0"),   // mp_UPSell
+            ("FlagActive",         Txt,  " NOT NULL DEFAULT '1'"), // FlagActive
+        };
+
+        var cau = new List<string>();
+        foreach (var c in cotProduct)
+            cau.Add($"ALTER TABLE {Bang("Products")} ADD COLUMN {(pg ? "IF NOT EXISTS " : "")}\"{c.ten}\" {c.kieu}{c.mac_dinh}");
+        foreach (var c in cotBom)
+            cau.Add($"ALTER TABLE {Bang("BomLines")} ADD COLUMN {(pg ? "IF NOT EXISTS " : "")}\"{c.ten}\" {c.kieu}{c.mac_dinh}");
+
+        foreach (var s in cau) try { await db.Database.ExecuteSqlRawAsync(s); } catch { }
     }
 
     private static async Task MigratePostgresAsync(AppDbContext db)
